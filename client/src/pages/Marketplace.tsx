@@ -5,18 +5,17 @@ import CategoryFilter from "@/components/CategoryFilter";
 import CreatorCampaigns from "@/components/CreatorCampaigns";
 import TopCreators from "@/components/TopCreators";
 import ProductCard from "@/components/ProductCard";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { BotMessageSquare, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
-// Import product images
 import ceramicBowlImage from "@/assets/product-ceramic-bowl.jpg";
 import macrameImage from "@/assets/product-macrame.jpg";
 import woodenBoardImage from "@/assets/product-wooden-board.jpg";
 import jewelryImage from "@/assets/product-jewelry.jpg";
 import basketImage from "@/assets/product-basket.jpg";
 
-// Mock data for products
 const mockProducts = [
   {
     id: "1",
@@ -27,28 +26,28 @@ const mockProducts = [
     artisan: "Elena Rodriguez",
     rating: 4.9,
     reviewCount: 127,
-    category: "pottery"
+    category: "pottery",
   },
   {
-    id: "2", 
+    id: "2",
     title: "Macrame Wall Hanging",
     price: 85,
     image: macrameImage,
     artisan: "Sarah Kim",
     rating: 4.8,
     reviewCount: 89,
-    category: "textiles"
+    category: "textiles",
   },
   {
     id: "3",
-    title: "Artisan Wooden Cutting Board", 
+    title: "Artisan Wooden Cutting Board",
     price: 75,
     originalPrice: 95,
     image: woodenBoardImage,
     artisan: "Marcus Thompson",
     rating: 4.9,
     reviewCount: 156,
-    category: "woodwork"
+    category: "woodwork",
   },
   {
     id: "4",
@@ -58,7 +57,7 @@ const mockProducts = [
     artisan: "Ana Martinez",
     rating: 5.0,
     reviewCount: 78,
-    category: "jewelry"
+    category: "jewelry",
   },
   {
     id: "5",
@@ -68,7 +67,7 @@ const mockProducts = [
     artisan: "David Chen",
     rating: 4.7,
     reviewCount: 93,
-    category: "home"
+    category: "home",
   },
   {
     id: "6",
@@ -76,10 +75,10 @@ const mockProducts = [
     price: 95,
     originalPrice: 120,
     image: ceramicBowlImage,
-    artisan: "Maria Santos", 
+    artisan: "Maria Santos",
     rating: 4.8,
     reviewCount: 104,
-    category: "pottery"
+    category: "pottery",
   },
   {
     id: "7",
@@ -89,7 +88,7 @@ const mockProducts = [
     artisan: "Lily Nguyen",
     rating: 4.9,
     reviewCount: 67,
-    category: "textiles"
+    category: "textiles",
   },
   {
     id: "8",
@@ -100,7 +99,7 @@ const mockProducts = [
     artisan: "James Wilson",
     rating: 4.8,
     reviewCount: 112,
-    category: "woodwork"
+    category: "woodwork",
   },
 ];
 
@@ -111,61 +110,67 @@ export default function Marketplace() {
   const { addToCart } = useCart();
 
   // Filter products based on selected category
-  const filteredProducts = selectedCategory === "all" 
-    ? mockProducts 
-    : mockProducts.filter(product => product.category === selectedCategory);
+  const filteredProducts =
+    selectedCategory === "all"
+      ? mockProducts
+      : mockProducts.filter((product) => product.category === selectedCategory);
 
   const handleFavoriteToggle = (productId: string) => {
-    setFavorites(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
+    setFavorites((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
         : [...prev, productId]
     );
   };
 
   const handleAddToCart = (productId: string) => {
-    const product = mockProducts.find(p => p.id === productId);
+    const product = mockProducts.find((p) => p.id === productId);
     if (product) {
       addToCart({
         id: String(product.id),
         title: product.title,
         price: product.price,
         image: product.image,
-        artisan: product.artisan
+        artisan: product.artisan,
       });
     }
   };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <MarketplaceHeader />
       <HeroSection />
-      
-      <CategoryFilter 
+
+      <CategoryFilter
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
       />
-      
+
       {/* Creator Campaigns */}
       <CreatorCampaigns />
-      
+
       {/* Top Creators */}
       <TopCreators />
-      
+
       <main className="container mx-auto px-4 py-12">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
-            {selectedCategory === "all" ? "Featured Items" : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Collection`}
+            {selectedCategory === "all"
+              ? "Featured Items"
+              : `${
+                  selectedCategory.charAt(0).toUpperCase() +
+                  selectedCategory.slice(1)
+                } Collection`}
           </h2>
           <p className="text-muted-foreground">
             Discover unique handcrafted items from talented artisans
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {filteredProducts.map((product) => (
             <ProductCard
@@ -179,7 +184,7 @@ export default function Marketplace() {
             />
           ))}
         </div>
-        
+
         {filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg">
@@ -188,13 +193,7 @@ export default function Marketplace() {
           </div>
         )}
       </main>
-      
-      {/* Footer */}
-      <footer className="bg-muted/20 py-6 mt-12">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Kalastra. All rights reserved.
-        </div>
-      </footer>
+
       {/* Scroll to top button */}
       {showScrollTop && (
         <Button
@@ -206,6 +205,8 @@ export default function Marketplace() {
           <ChevronUp className="h-5 w-5" />
         </Button>
       )}
+
+      <Footer />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/components/SearchContext";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
+import SellerDashboard from "./pages/SellerDashboard";
 import Orders from "./pages/Orders";
 import Notifications from "./pages/Notifications";
 import PaymentMethods from "./pages/PaymentMethods";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/creator/:creatorId" element={<CreatorProfile />} />
+              <Route path="/seller-dashboard" element={<SellerDashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/notifications" element={<Notifications />} />
