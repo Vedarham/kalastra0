@@ -129,7 +129,7 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/products/ai-generate-listing",
+        "api/products/ai-generate-listing",
         {
           method: "POST",
           body: formData,
