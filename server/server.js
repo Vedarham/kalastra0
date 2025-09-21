@@ -7,6 +7,10 @@ app.use(express.json({ limit: '4mb' }))
 app.use(cors())
 await connectDB()
 
+app.get('/', (req, res) => {
+  res.send('Kalastra by Quadrant!');
+});
+
 app.get('/test',(req,res)=>{
     res.send('Testing API successful')
 })
