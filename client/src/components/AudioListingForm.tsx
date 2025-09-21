@@ -34,6 +34,10 @@ const questions = [
   "What makes your product unique compared to similar items?",
 ];
 
+const baseUrl = import.meta.env.MODE === "production"
+  ? "https://kalastra0-server.vercel.app/"  
+  : "http://localhost:5000";
+
 export default function AudioListingForm({ onBack }: AudioListingFormProps) {
    interface GeneratedData {
     Title: string;
@@ -129,7 +133,7 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
 
     try {
       const response = await fetch(
-        "api/products/ai-generate-listing",
+        `${baseUrl}/api/products/ai-generate-listing`,
         {
           method: "POST",
           body: formData,
