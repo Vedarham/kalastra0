@@ -7,8 +7,8 @@ app.use(express.json({ limit: '4mb' }))
 app.use(cors())
 await connectDB()
 
-app.get('/',(req,res)=>{
-    res.send('<a href="/auth/google>Authenticate with Google</a>')
+app.get('/test',(req,res)=>{
+    res.send('Testing API successful')
 })
 
 import userRoutes from './routes/userRoutes.js'
