@@ -35,7 +35,7 @@ const questions = [
 ];
 
 const baseUrl = import.meta.env.MODE === "production"
-  ? "https://kalastra0-server.vercel.app/"  
+  ? "https://kalastra0-server.vercel.app"  
   : "http://localhost:5000";
 
 export default function AudioListingForm({ onBack }: AudioListingFormProps) {
