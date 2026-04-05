@@ -52,10 +52,10 @@ export const enrichProduct = async (inputText) => {
 //       contents: [{ role: "user", parts: [{ text: prompt }] }],
 //     });
 
-//     // ✅ Safely extract text
+//     //  Safely extract text
 //     const text =
 //       result.candidates?.[0]?.content?.parts?.[0]?.text ||
-//       "⚠️ No text generated";
+//       " No text generated";
 
 //     console.log("Gemini output:", text);
 //     return { raw: text };

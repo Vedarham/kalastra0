@@ -4,28 +4,62 @@ const artisanSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // link to generic user profile
+      ref: "User", 
       required: true,
     },
-    shopName: { type: String, required: true },
+    shopName: {
+      type: String,
+      trim: true
+    },
+    shopDescription: {
+      type: String,
+      maxlength: [1000, 'Shop description cannot be more than 1000 characters']
+    },
+    shopBanner: String,
+    socialLinks: {
+      website: String,
+      instagram: String,
+      facebook: String,
+      twitter: String
+    },
+    
+    products: [{ 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Product" 
+    }],   
+
     category: {
       type: String,
       enum: ["pottery", "textiles", "jewelry", "painting", "other"],
       required: true,
     },
-    bio: { type: String, maxlength: 500 },
-    profileImage: { type: String }, // GCS URL
-    socialLinks: {
-      instagram: String,
-      facebook: String,
-      website: String,
+
+    totalSales: {
+      type: Number,
+      default: 0
     },
+    
+    numReviews: {
+      type: Number,
+      default: 0
+    },
+
     rating: {
-      avg: { type: Number, default: 0 },
-      count: { type: Number, default: 0 },
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
     },
-    products: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
-    isVerified: { type: Boolean, default: false }, // optional moderation
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false
+    },
+
+    isSellerVerified: {
+      type: Boolean,
+      default: false
+    },
   },
   { timestamps: true }
 );
