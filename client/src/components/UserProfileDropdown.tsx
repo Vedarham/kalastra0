@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,27 +21,37 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { logout } from "@/api/auth";
 
 export default function UserProfileDropdown() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Mock auth state
+  const { user, setUser } = useAuth()
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    toast({
-      title: "Logged out successfully",
-      description: "You have been logged out of your account"
-    });
+  const handleLogout = async () => {
+    try {
+      await logout(); 
+      setUser(null); 
+      toast({
+        title: "Logged out successfully",
+      });
+      navigate("/auth");
+    } catch {
+      toast({
+        title: "Logout failed",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleNavigation = (path: string) => {
     navigate(path);
   };
 
-  if (!isLoggedIn) {
+  if (!user) {
     return (
-      <Button variant="outline" onClick={() => setIsLoggedIn(true)}>
+      <Button variant="outline" onClick={() =>  navigate("/auth")}>
         Sign In
       </Button>
     );

@@ -1,83 +1,284 @@
+import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
-import admin from "firebase-admin";
+import { generateAccessToken, generateRefreshToken } from "../utils/token.utils.js";
 
-//  verify Firebase ID Token middleware
-// export const verifyToken = async (req, res, next) => {
-//   const token = req.headers.authorization?.split(" ")[1];
-//   if (!token) return res.status(401).json({ message: "No token provided" });
-
-//   try {
-//     const decoded = await admin.auth().verifyIdToken(token);
-//     req.firebaseUid = decoded.uid;
-//     next();
-//   } catch (error) {
-//     res.status(401).json({ message: "Invalid token" });
-//   }
-// };
-
-// sign in / register
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
-
-    let user = await User.findOne({ firebaseUid: req.firebaseUid });
-    if (!user) {
-      user = await User.create({
-        firebaseUid: req.firebaseUid,
-        name,
-        email,
-        role,
+    let { name, email, password, role } = req.body;
+    
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
       });
     }
 
-    res.status(200).json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const loginUser = async (req, res, next) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ success: false, message: "Token is required" });
-    }
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const { uid, email, name } = decodedToken;
-    let user = await User.findOne({ firebaseUid: uid });
-
-    if (!user) {
-      user = await User.create({
-        firebaseUid: uid,
-        email: email,
-        name: name || "New User",
+    email = email.toLowerCase().trim();
+  
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists"
       });
     }
-
-    res.status(200).json({
+  
+    const allowedRoles = ["buyer", "seller"];
+    const safeRole = allowedRoles.includes(role) ? role : "buyer";
+  
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: safeRole
+    });
+  
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+  
+    user.refreshTokens.push({ token: refreshToken, createdAt: new Date() });
+    await user.save();
+  
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+  
+    res.status(201).json({
       success: true,
-      message: "Login successful",
-      user,
+      message: "User registered successfully",
+      user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            avatar: user.avatar
+          },
+      accessToken
     });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error registering user',
+      error: error.message
+    });
   }
 };
 
-export const getMe = async (req, res, next) => {
+export const loginUser = async (req, res) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+  let { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password required" });
+  }
+
+email = email.toLowerCase().trim();
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+
+  if (!user.refreshTokens) user.refreshTokens = [];
+  user.refreshTokens.push({ token: refreshToken, createdAt: new Date() });
+  await user.save();
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  res.json({
+    success: true,
+    message: 'Login successful',
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar
+    },
+    accessToken
+  });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error logging in',
+      error: error.message
+    });
+  }
+};
+
+export const googleCallback = async (req, res) => {
+  try {
+    
+    const accessToken = generateAccessToken(req.user);
+    const refreshToken = generateRefreshToken(req.user);
+
+    if (!req.user.refreshTokens) req.user.refreshTokens = [];
+    req.user.refreshTokens.push({ token: refreshToken, createdAt: new Date() });
+    await req.user.save();
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${accessToken}`);
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: 'Error during Google login',
+      error: error.message });
+  }
+}
+
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ success: true, user });
+    res.status(200).json({ 
+      success: true,
+      user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar
+    }
+     });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user data',
+      error: error.message
+    });
+  }
+};
+
+export const updateProfile =async(req,res)=>{
+  try {
+    const user = await User.findById(req.user.id);;
+    if(!user){
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const {name, avatar, bio} = req.body;
+    if(name) user.name =name;
+    if(avatar) user.avatar = avatar;
+    if(bio) user.bio = bio;
+    await user.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,}});
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating profile',
+      error: error.message
+    });
+  }
+};
+
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No refresh token"
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+
+    const user = await User.findById(decoded._id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const tokenExists = user.refreshTokens.find(t => t.token === token);
+
+    if (!tokenExists) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid refresh token"
+      });
+    }
+
+    user.refreshTokens = user.refreshTokens.filter(t => t.token !== token);
+
+    const newRefreshToken = generateRefreshToken(user);
+    const newAccessToken = generateAccessToken(user);
+
+    user.refreshTokens.push({
+      token: newRefreshToken,
+      createdAt: new Date()
+    });
+
+    await user.save();
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({
+      success: true,
+      accessToken: newAccessToken
+    });
+
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired refresh token"
+    });
   }
 };
 
 export const logoutUser = async (req, res) => {
-  // Firebase handles logout client-side; backend just acknowledges
-  res.status(200).json({ success: true, message: "Logged out successfully" });
+  const token = req.cookies.refreshToken;
+  if (!token) {
+    return res.json({ success: true, message: "Logged out" });
+  }
+  
+  await User.updateOne(
+    { "refreshTokens.token": token },
+    { $pull: { refreshTokens: { token } } }
+  );
+
+  res.clearCookie("refreshToken");
+
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+
 };

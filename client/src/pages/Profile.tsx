@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/api/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,37 +9,77 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Camera, MapPin, Calendar, Mail, Phone, Edit, Save, X } from "lucide-react";
+import { Camera, MapPin, Mail, Edit, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
+import { logout } from "@/api/auth";
 
 export default function Profile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const {user, setUser, loadUser} = useAuth();
   const [formData, setFormData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    bio: "Passionate collector of handcrafted items and supporter of local artisans. I love discovering unique pieces that tell a story.",
-    memberSince: "January 2023"
+    name: "",
+    email: "",
+    phone: "",
+    location : "",
+    bio: "",
   });
 
   const [editFormData, setEditFormData] = useState(formData);
 
-  const handleSave = () => {
-    setFormData(editFormData);
+useEffect(() => {
+  if (!user) return;
+
+  const data = {
+    name: user.name || "",
+    email: user.email || "",
+    phone: user.phone || "",
+    location: user.location || "",
+    bio: user.bio || "",
+  };
+
+  setFormData(data);
+  setEditFormData(data);
+}, [user]);
+
+  const handleSave = async () => {
+  try {
+    await api.put("/auth/me", editFormData);
+    await loadUser();
     setIsEditing(false);
-    toast({
-      title: "Profile updated",
-      description: "Your profile has been successfully updated"
-    });
+    toast({ title: "Profile updated", description: "Saved successfully" });
+  } catch {
+    toast({ title: "Update failed", description: "Try again", variant: "destructive" });
+  }
   };
 
   const handleCancel = () => {
     setEditFormData(formData);
     setIsEditing(false);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const uploadRes = await api.put("/users/avatar", formData,{
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    await loadUser();
+
+    toast({ title: "Avatar updated" });
+  } catch {
+    toast({
+      title: "Upload failed",
+      variant: "destructive"
+      });
+    }
   };
 
   const stats = [
@@ -47,6 +89,25 @@ export default function Profile() {
     { label: "Following", value: 45 }
   ];
 
+  const handleLogout = async () => {
+  try {
+    await logout();
+    setUser(null);
+    window.location.href = "/auth";
+  } catch {
+    toast({ title: "Logout failed", variant: "destructive" });
+  }
+};
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Are you sure? This cannot be undone.")) return;
+    try {
+      await api.delete("/users/delete");
+      window.location.href = "/auth";
+    } catch {
+      toast({ title: "Delete failed", variant: "destructive" });
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <MarketplaceHeader />
@@ -59,18 +120,26 @@ export default function Profile() {
               <div className="flex flex-col md:flex-row items-start gap-6">
                 <div className="relative">
                   <Avatar className="h-32 w-32 border-4 border-background shadow-soft">
-                    <AvatarImage src="/placeholder-avatar.png" alt="Profile" />
+                    <AvatarImage src= {user?.avatar} alt="Profile" />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                      JD
+                      {user?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <Button 
-                    size="icon" 
-                    variant="secondary" 
-                    className="absolute bottom-0 right-0 rounded-full shadow-soft"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
+                  <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="avatarUpload"
+                      onChange={handleAvatarUpload}
+                    />
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-0 right-0 rounded-full"
+                      onClick={() => document.getElementById("avatarUpload")?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
                 </div>
                 
                 <div className="flex-1 space-y-4">
@@ -88,12 +157,12 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    {/* <div className="flex gap-2">
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         Member since {formData.memberSince}
                       </Badge>
-                    </div>
+                    </div> */}
                   </div>
                   
                   <p className="text-muted-foreground">{formData.bio}</p>
@@ -302,8 +371,18 @@ export default function Profile() {
                   <div>
                     <h4 className="font-medium mb-3 text-destructive">Danger Zone</h4>
                     <div className="space-y-3">
-                      <Button variant="outline" className="text-destructive border-destructive">
-                        Delete Account
+                      <Button
+                          variant="outline"
+                          className="text-destructive border-destructive"
+                          onClick={handleDeleteAccount}
+                        >
+                          Delete Account
+                        </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleLogout}
+                      >
+                        Logout
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         This action cannot be undone. All your data will be permanently deleted.

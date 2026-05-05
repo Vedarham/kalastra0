@@ -1,12 +1,10 @@
 import express from "express";
-import multer from "multer";
-import { createManualProduct,createAIProduct ,getProducts} from "../controllers/productController.js";
+import { createManualProduct, createAIProduct, getProducts} from "../controllers/productController.js";
+import { upload } from "../middlewares/upload.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authorizeRoles } from "../middlewares/role.middleware.js"
 
 const router = express.Router();
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 const fileFields = [
   { name: 'image_0' },
@@ -30,9 +28,16 @@ router.get("/", getProducts);
 // router.get("/:id", getProductById);
 
 // Create product (manual input)
-router.post("/manual", authMiddleware, createManualProduct);
+router.post("/manual", authMiddleware, authorizeRoles("seller"), createManualProduct);
 
 // Create product (AI-assisted, with audio/image)
-router.post("/ai-generate-listing",upload.fields(fileFields), createAIProduct);
+router.post("/ai-generate-listing", upload.fields(fileFields), createAIProduct);
+
+// Get Dashboard
+// router.get("/dashboard",
+//   authMiddleware,
+//   authorizeRoles("admin", "seller"),
+//   getDashboard
+// );
 
 export default router;

@@ -1,11 +1,13 @@
 import express from "express";
-import { createOrder, getUserOrders, getOrderById, cancelOrder } from "../controllers/orderController.js";
+import { createOrder, updatePaymentStatus, getUserOrders, getOrderById, cancelOrder } from "../controllers/orderController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 // Create a new order (checkout)
 router.post("/", authMiddleware, createOrder);
+
+router.post("/:orderId/payment", authMiddleware, updatePaymentStatus);
 
 // Get all orders for logged-in user
 router.get("/", authMiddleware, getUserOrders);
