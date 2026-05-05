@@ -2,17 +2,7 @@ import { Star, ShoppingCart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  creator: string;
-  rating: number;
-  category: string;
-}
+import { Product } from "@/types/product.types";
 
 interface ProductCardProps {
   product: Product;
@@ -21,9 +11,9 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onViewDetails, onAddToCart }: ProductCardProps) {
-  const discountPercent = product.originalPrice 
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : 0;
+  const discountPercent = product.price 
+    // ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    // : 0;
 
   return (
     <Card className="group hover:shadow-card transition-all duration-200 hover:scale-[1.02]">
@@ -32,8 +22,8 @@ export default function ProductCard({ product, onViewDetails, onAddToCart }: Pro
           {/* Product Image */}
           <div className="relative w-20 h-20 flex-shrink-0">
             <img
-              src={product.image}
-              alt={product.title}
+              src={product.images?.[0]?.url}
+              alt={product.name}
               className="w-full h-full object-cover rounded-md"
             />
             {discountPercent > 0 && (
@@ -49,10 +39,10 @@ export default function ProductCard({ product, onViewDetails, onAddToCart }: Pro
           {/* Product Info */}
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-sm line-clamp-2 text-card-foreground">
-              {product.title}
+              {product.name}
             </h4>
             <p className="text-xs text-muted-foreground mb-1">
-              by {product.creator}
+              by {product.artisan?.name}
             </p>
             
             {/* Rating */}
@@ -66,9 +56,9 @@ export default function ProductCard({ product, onViewDetails, onAddToCart }: Pro
               <span className="font-semibold text-marketplace-price">
                 ₹{product.price}
               </span>
-              {product.originalPrice && (
+              {product.price && (
                 <span className="text-xs line-through text-muted-foreground">
-                  ₹{product.originalPrice}
+                  ₹{product.price}
                 </span>
               )}
             </div>

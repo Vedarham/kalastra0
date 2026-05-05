@@ -3,20 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  creator: string;
-  rating: number;
-  category: string;
-  description?: string;
-  reviews?: number;
-  inStock?: boolean;
-}
+import { Product } from "@/types/product.types";
 
 interface ProductModalProps {
   product: Product | null;
@@ -28,9 +15,9 @@ interface ProductModalProps {
 export default function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductModalProps) {
   if (!product) return null;
 
-  const discountPercent = product.originalPrice 
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : 0;
+  const discountPercent = product.price 
+    // ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    // : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -50,8 +37,8 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
           {/* Product Image */}
           <div className="relative">
             <img
-              src={product.image}
-              alt={product.title}
+              src={product.images?.[0]?.url || ""}
+              alt={product.name}
               className="w-full h-80 object-cover rounded-lg"
             />
             {discountPercent > 0 && (
@@ -68,10 +55,10 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
           <div className="space-y-4">
             <div>
               <h2 className="text-2xl font-bold text-card-foreground">
-                {product.title}
+                {product.name}
               </h2>
               <p className="text-muted-foreground">
-                by <span className="font-medium">{product.creator}</span>
+                by <span className="font-medium">{product.artisan?.name}</span>
               </p>
             </div>
 
@@ -91,20 +78,15 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
               </div>
               <span className="text-sm font-medium">{product.rating}</span>
               <span className="text-sm text-muted-foreground">
-                ({product.reviews || 24} reviews)
+                ({product.numReviews || 24} reviews)
               </span>
             </div>
 
             {/* Price */}
-            <div className="flex items-center gap-3">
+            <div>
               <span className="text-3xl font-bold text-marketplace-price">
                 ₹{product.price}
               </span>
-              {product.originalPrice && (
-                <span className="text-lg line-through text-muted-foreground">
-                  ₹{product.originalPrice}
-                </span>
-              )}
             </div>
 
             {/* Description */}
@@ -120,17 +102,17 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
             <Separator />
 
             {/* Stock Status */}
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
                 product.inStock !== false ? 'bg-green-500' : 'bg-red-500'
               }`} />
               <span className="text-sm">
                 {product.inStock !== false ? 'In Stock' : 'Out of Stock'}
               </span>
-            </div>
+            </div> */}
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <Button
                 onClick={() => onAddToCart?.(product)}
                 disabled={product.inStock === false}
@@ -145,14 +127,25 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
               <Button variant="outline" size="icon">
                 <Share className="h-4 w-4" />
               </Button>
-            </div>
+            </div> */}
 
             {/* Category Badge */}
             <Badge variant="secondary" className="w-fit">
               {product.category}
             </Badge>
+
+            {/* Add to Cart */}
+            {onAddToCart && (
+              <Button
+                onClick={() => onAddToCart(product)}
+                className="w-full"
+                >
+                Add to Cart
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        
 
         {/* Reviews Section */}
         <div className="mt-6">

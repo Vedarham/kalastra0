@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
 import HeroSection from "@/components/HeroSection";
 import CategoryFilter from "@/components/CategoryFilter";
@@ -9,111 +9,39 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-
-import ceramicBowlImage from "@/assets/product-ceramic-bowl.jpg";
-import macrameImage from "@/assets/product-macrame.jpg";
-import woodenBoardImage from "@/assets/product-wooden-board.jpg";
-import jewelryImage from "@/assets/product-jewelry.jpg";
-import basketImage from "@/assets/product-basket.jpg";
-
-const mockProducts = [
-  {
-    id: "1",
-    title: "Handcrafted Ceramic Bowl",
-    price: 45,
-    originalPrice: 60,
-    image: ceramicBowlImage,
-    artisan: "Elena Rodriguez",
-    rating: 4.9,
-    reviewCount: 127,
-    category: "pottery",
-  },
-  {
-    id: "2",
-    title: "Macrame Wall Hanging",
-    price: 85,
-    image: macrameImage,
-    artisan: "Sarah Kim",
-    rating: 4.8,
-    reviewCount: 89,
-    category: "textiles",
-  },
-  {
-    id: "3",
-    title: "Artisan Wooden Cutting Board",
-    price: 75,
-    originalPrice: 95,
-    image: woodenBoardImage,
-    artisan: "Marcus Thompson",
-    rating: 4.9,
-    reviewCount: 156,
-    category: "woodwork",
-  },
-  {
-    id: "4",
-    title: "Turquoise Silver Earrings",
-    price: 120,
-    image: jewelryImage,
-    artisan: "Ana Martinez",
-    rating: 5.0,
-    reviewCount: 78,
-    category: "jewelry",
-  },
-  {
-    id: "5",
-    title: "Natural Fiber Basket",
-    price: 65,
-    image: basketImage,
-    artisan: "David Chen",
-    rating: 4.7,
-    reviewCount: 93,
-    category: "home",
-  },
-  {
-    id: "6",
-    title: "Hand-thrown Terra Cotta Vase",
-    price: 95,
-    originalPrice: 120,
-    image: ceramicBowlImage,
-    artisan: "Maria Santos",
-    rating: 4.8,
-    reviewCount: 104,
-    category: "pottery",
-  },
-  {
-    id: "7",
-    title: "Bohemian Macrame Plant Hanger",
-    price: 55,
-    image: macrameImage,
-    artisan: "Lily Nguyen",
-    rating: 4.9,
-    reviewCount: 67,
-    category: "textiles",
-  },
-  {
-    id: "8",
-    title: "Reclaimed Wood Serving Tray",
-    price: 80,
-    originalPrice: 100,
-    image: woodenBoardImage,
-    artisan: "James Wilson",
-    rating: 4.8,
-    reviewCount: 112,
-    category: "woodwork",
-  },
-];
+import { Product } from "@/types/product.types";
+import { getAllProducts, getProductsByCategory } from "@/api/product";
 
 export default function Marketplace() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const { addToCart } = useCart();
 
-  // Filter products based on selected category
-  const filteredProducts =
-    selectedCategory === "all"
-      ? mockProducts
-      : mockProducts.filter((product) => product.category === selectedCategory);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+
+        const res =
+          selectedCategory === "all"
+            ? await getAllProducts()
+            : await getProductsByCategory(selectedCategory);
+
+        setProducts(res.products);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedCategory]);
+  
 
   const handleFavoriteToggle = (productId: string) => {
     setFavorites((prev) =>
@@ -124,14 +52,14 @@ export default function Marketplace() {
   };
 
   const handleAddToCart = (productId: string) => {
-    const product = mockProducts.find((p) => p.id === productId);
+    const product = products.find((p) => p._id === productId);
     if (product) {
       addToCart({
-        id: String(product.id),
-        title: product.title,
+        id: String(product._id),
+        title: product.name,
         price: product.price,
-        image: product.image,
-        artisan: product.artisan,
+        image: product.images?.[0]?.url || "/placeholder.png",
+        artisan: product.artisan?.name || "Unknown",
       });
     }
   };
@@ -170,22 +98,20 @@ export default function Marketplace() {
             Discover unique handcrafted items from talented artisans
           </p>
         </div>
-
+        {loading ? (
+          <div className="text-center py-12">Loading products...</div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              {...product}
-              id={String(product.id)}
-              reviewCount={product.rating}
-              isFavorited={favorites.includes(String(product.id))}
+          {products.map((product) => (
+              <ProductCard 
+              key = {product._id} 
+              product={product} 
               onFavoriteToggle={handleFavoriteToggle}
-              onAddToCart={handleAddToCart}
-            />
-          ))}
+              onAddToCart={handleAddToCart}/>
+            ))}
         </div>
-
-        {filteredProducts.length === 0 && (
+        )}
+        {!loading && products.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg">
               No items found in this category. Check back soon for new arrivals!

@@ -1,37 +1,51 @@
 import express from "express";
-import { createManualProduct, createAIProduct, getProducts} from "../controllers/productController.js";
+import { createManualProduct, createAIProduct, getProducts, getMyProducts, getProductById, deleteProduct, updateProduct} from "../controllers/productController.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js"
 
 const router = express.Router();
 
-const fileFields = [
-  { name: 'image_0' },
-  { name: 'image_1' },
-  { name: 'image_2' },
-  { name: 'image_3' },
-  { name: 'image_4' },
-  { name: 'audio_question_0' },
-  { name: 'audio_question_1' },
-  { name: 'audio_question_2' },
-  { name: 'audio_question_3' },
-  { name: 'audio_question_4' },
-  { name: 'audio_question_5' },
-  { name: 'audio_question_6' },
-  { name: 'audio_question_7' }
-];
-
-// Get all or single product
+// Public Route
 router.get("/", getProducts);
 
-// router.get("/:id", getProductById);
+// Seller Routes
+router.get("/my", authMiddleware, authorizeRoles("seller"), getMyProducts);
 
-// Create product (manual input)
-router.post("/manual", authMiddleware, authorizeRoles("seller"), createManualProduct);
+// Get Single product
+router.get("/:id", getProductById);
 
-// Create product (AI-assisted, with audio/image)
-router.post("/ai-generate-listing", upload.fields(fileFields), createAIProduct);
+// Manual Product Creation
+router.post("/manual", authMiddleware, authorizeRoles("seller"), upload.array("images", 5), createManualProduct);
+
+// AI Product Creation (Audio + Images)
+router.post(
+  "/ai-generate-listing",
+  authMiddleware,
+  authorizeRoles("seller"),
+  upload.fields([
+    { name: "image_0", maxCount: 1 },
+    { name: "image_1", maxCount: 1 },
+    { name: "image_2", maxCount: 1 },
+    { name: "image_3", maxCount: 1 },
+    { name: "image_4", maxCount: 1 },
+    { name: "audio_question_0", maxCount: 1 },
+    { name: "audio_question_1", maxCount: 1 },
+    { name: "audio_question_2", maxCount: 1 },
+    { name: "audio_question_3", maxCount: 1 },
+    { name: "audio_question_4", maxCount: 1 },
+    { name: "audio_question_5", maxCount: 1 },
+    { name: "audio_question_6", maxCount: 1 },
+    { name: "audio_question_7", maxCount: 1 },
+  ]),
+  createAIProduct
+);
+
+// Update Product
+router.put("/:id", authMiddleware, authorizeRoles("seller"), upload.array("images", 5), updateProduct);
+
+// Delete (soft delete)
+router.delete("/:id", authMiddleware, authorizeRoles("seller"), deleteProduct);
 
 // Get Dashboard
 // router.get("/dashboard",

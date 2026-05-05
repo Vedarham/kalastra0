@@ -22,21 +22,29 @@ export default function Profile() {
     name: "",
     email: "",
     phone: "",
-    location : "",
+    location: {
+      city: "",
+      state: "",
+      country: "",
+    },
     bio: "",
   });
 
   const [editFormData, setEditFormData] = useState(formData);
 
-useEffect(() => {
-  if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
   const data = {
-    name: user.name || "",
-    email: user.email || "",
-    phone: user.phone || "",
-    location: user.location || "",
-    bio: user.bio || "",
+    name: user.name ?? "",
+    email: user.email ?? "",
+    phone: user.phone ?? "",
+    location: {
+      city: user.location?.city ?? "",
+      state: user.location?.state ?? "",
+      country: user.location?.country ?? "",
+    },
+    bio: user.bio ?? "",
   };
 
   setFormData(data);
@@ -67,7 +75,7 @@ useEffect(() => {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    const uploadRes = await api.put("/users/avatar", formData,{
+    await api.put("/users/avatar", formData,{
       headers: { "Content-Type": "multipart/form-data" },
     });
 
@@ -122,7 +130,7 @@ useEffect(() => {
                   <Avatar className="h-32 w-32 border-4 border-background shadow-soft">
                     <AvatarImage src= {user?.avatar} alt="Profile" />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                      {user?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
+                      {user?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <input
@@ -153,7 +161,15 @@ useEffect(() => {
                         </div>
                         <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4" />
-                          <span className="text-sm">{formData.location}</span>
+                          <span className="text-sm">
+                            {[
+                              formData.location.city,
+                              formData.location.state,
+                              formData.location.country,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -258,17 +274,54 @@ useEffect(() => {
                       )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      {isEditing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>City</Label>
                         <Input
-                          id="location"
-                          value={editFormData.location}
-                          onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                          value={editFormData.location.city}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              location: {
+                                ...editFormData.location,
+                                city: e.target.value,
+                              },
+                            })
+                          }
                         />
-                      ) : (
-                        <div className="p-3 bg-muted rounded-md">{formData.location}</div>
-                      )}
+                      </div>
+
+                      <div>
+                        <Label>State</Label>
+                        <Input
+                          value={editFormData.location.state}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              location: {
+                                ...editFormData.location,
+                                state: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Country</Label>
+                        <Input
+                          value={editFormData.location.country}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              location: {
+                                ...editFormData.location,
+                                country: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                   

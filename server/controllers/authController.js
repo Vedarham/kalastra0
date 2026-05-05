@@ -148,7 +148,10 @@ export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
     }
 
     res.status(200).json({ 
@@ -158,9 +161,12 @@ export const getMe = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.avatar
+      avatar: user.avatar,
+      phone: user.phone,
+      bio: user.bio,
+      location: user.location
     }
-     });
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -172,14 +178,29 @@ export const getMe = async (req, res) => {
 
 export const updateProfile =async(req,res)=>{
   try {
+    const {name, email, phone, avatar, bio, location} = req.body;
+
     const user = await User.findById(req.user.id);;
     if(!user){
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
     }
-    const {name, avatar, bio} = req.body;
-    if(name) user.name =name;
-    if(avatar) user.avatar = avatar;
-    if(bio) user.bio = bio;
+    
+    if (name) user.name = name;
+    if (email) user.email = email.toLowerCase().trim();
+    if (phone) user.phone = phone;
+    if (bio) user.bio = bio;
+
+    if (location) {
+      user.location = {
+        city: location.city || user.location?.city,
+        state: location.state || user.location?.state,
+        country: location.country || user.location?.country,
+      };
+    }
+
     await user.save();
     
     res.status(200).json({
@@ -190,7 +211,12 @@ export const updateProfile =async(req,res)=>{
         name: user.name,
         email: user.email,
         role: user.role,
-        avatar: user.avatar,}});
+        avatar: user.avatar,
+        phone: user.phone,
+        bio: user.bio,
+        location: user.location
+      }
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -210,9 +236,8 @@ export const refreshAccessToken = async (req, res) => {
         message: "No refresh token"
       });
     }
-
+    
     const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-
     const user = await User.findById(decoded._id);
 
     if (!user) {

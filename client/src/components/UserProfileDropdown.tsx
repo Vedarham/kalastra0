@@ -17,7 +17,9 @@ import {
   HelpCircle, 
   MessageSquare,
   Bell,
-  CreditCard 
+  CreditCard, 
+  Store,
+  Handshake
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -57,14 +59,18 @@ export default function UserProfileDropdown() {
     );
   }
 
+  const initials = user?.name
+    ? user.name.split(" ").map((n: string) => n[0]).join("")
+    : "U";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src="/placeholder-avatar.png" alt="Profile" />
+            <AvatarImage src={user.avatar || ""} alt={user.name} />
             <AvatarFallback className="bg-primary text-primary-foreground">
-              JD
+              {initials}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -76,9 +82,9 @@ export default function UserProfileDropdown() {
       >
         <DropdownMenuLabel className="p-4">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">John Doe</p>
+            <p className="text-sm font-medium leading-none">{user.name || "User"}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              john.doe@example.com
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -109,6 +115,22 @@ export default function UserProfileDropdown() {
           <CreditCard className="mr-3 h-4 w-4" />
           <span>Payment Methods</span>
         </DropdownMenuItem>
+
+
+        {/* SELLER FEATURES */}
+        {user.role === "seller" && (
+          <>
+            <DropdownMenuItem onClick={() => handleNavigation("/seller/dashboard")} className="p-3 cursor-pointer">
+              <Store className="mr-3 h-4 w-4" />
+              <span>Seller Dashboard</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={() => handleNavigation("/seller/products")} className="p-3 cursor-pointer">
+              <Package className="mr-3 h-4 w-4" />
+              <span>My Products</span>
+            </DropdownMenuItem>
+          </>
+        )}
         
         <DropdownMenuSeparator />
         
@@ -128,6 +150,11 @@ export default function UserProfileDropdown() {
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />
+
+        <DropdownMenuItem onClick={() => handleNavigation('/creator/:creatorId')} className="p-3 cursor-pointer">
+          <Handshake className="mr-3 h-4 w-4" />
+          <span>Switch to Artisan</span>
+        </DropdownMenuItem>
         
         <DropdownMenuItem onClick={handleLogout} className="p-3 cursor-pointer text-destructive">
           <LogOut className="mr-3 h-4 w-4" />

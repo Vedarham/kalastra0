@@ -8,9 +8,10 @@ import rateLimit from 'express-rate-limit';
 import { connectDB } from './db/db.js'
 import './config/passport.js'
 
+import authRoutes from './routes/authRoutes.js' 
 import userRoutes from './routes/userRoutes.js'
+import artisanRoutes from './routes/artisanRoutes.js'
 import productRoutes from './routes/productRoutes.js'
-import authRoutes from './routes/authRoutes.js'  
 import orderRoutes from './routes/orderRoutes.js'
 import reviewRoutes from './routes/reviewRoutes.js'
 
@@ -47,6 +48,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/artisans', artisanRoutes)
 app.use('/api/products', productRoutes)
 // app.use('/api/notifications', notificationRoutes)
 app.use('/api/orders', orderRoutes);

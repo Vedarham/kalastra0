@@ -11,13 +11,7 @@ import ChatMessage from "./ChatMessage";
 import ProductCard from "./ProductCard";
 import FiltersPanel from "./FiltersPanel";
 // import VoiceInput from "./VoiceInput";
-
-// Import product images
-import ceramicBowlImage from "@/assets/product-ceramic-bowl.jpg";
-import macrameImage from "@/assets/product-macrame.jpg";
-import woodenBoardImage from "@/assets/product-wooden-board.jpg";
-import jewelryImage from "@/assets/product-jewelry.jpg";
-import basketImage from "@/assets/product-basket.jpg";
+import { Product } from "@/types/product.types";
 
 interface Message {
   id: string;
@@ -25,17 +19,6 @@ interface Message {
   content: string;
   timestamp: Date;
   products?: Product[];
-}
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  creator: string;
-  rating: number;
-  category: string;
 }
 
 interface ChatBoxProps {
@@ -50,57 +33,9 @@ const QUICK_ACTIONS = [
   "Upload Image to Find Similar"
 ];
 
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    title: "Handcrafted Ceramic Bowl",
-    price: 450,
-    originalPrice: 600,
-    image: ceramicBowlImage,
-    creator: "Elena Rodriguez",
-    rating: 4.8,
-    category: "pottery"
-  },
-  {
-    id: "2", 
-    title: "Artisan Wooden Cutting Board",
-    price: 320,
-    image: woodenBoardImage,
-    creator: "Marcus Thompson",
-    rating: 4.9,
-    category: "woodwork"
-  },
-  {
-    id: "3",
-    title: "Macrame Wall Hanging",
-    price: 280,
-    image: macrameImage, 
-    creator: "Sarah Kim",
-    rating: 4.7,
-    category: "textiles"
-  },
-  {
-    id: "4",
-    title: "Turquoise Silver Earrings",
-    price: 750,
-    image: jewelryImage,
-    creator: "Ana Martinez",
-    rating: 5.0,
-    category: "jewelry"
-  },
-  {
-    id: "5",
-    title: "Natural Fiber Basket",
-    price: 420,
-    image: basketImage,
-    creator: "David Chen",
-    rating: 4.7,
-    category: "home"
-  }
-];
 
 export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
-  const { setSearchQuery, setSearchResults, setIsSearching } = useSearch();
+  const { products, setSearchQuery, setSearchResults } = useSearch();
   const { addToCart } = useCart();
   const { toast } = useToast();
   
@@ -128,7 +63,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
     // Smart search logic
     const query = inputValue.toLowerCase();
-    let filteredProducts = MOCK_PRODUCTS;
+    let filteredProducts = products;
 
     // Filter by price
     const priceMatch = query.match(/under (\d+)|below (\d+)|less than (\d+)/);
@@ -139,15 +74,15 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
     // Filter by material/category
     if (query.includes('wooden') || query.includes('wood')) {
-      filteredProducts = filteredProducts.filter(p => p.category === 'woodwork');
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'woodwork');
     } else if (query.includes('ceramic') || query.includes('pottery') || query.includes('pot')) {
-      filteredProducts = filteredProducts.filter(p => p.category === 'pottery');
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'pottery');
     } else if (query.includes('jewelry') || query.includes('ring') || query.includes('earring')) {
-      filteredProducts = filteredProducts.filter(p => p.category === 'jewelry');
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'jewelry');
     } else if (query.includes('textile') || query.includes('macrame') || query.includes('fabric')) {
-      filteredProducts = filteredProducts.filter(p => p.category === 'textiles');
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'textiles');
     } else if (query.includes('basket') || query.includes('home')) {
-      filteredProducts = filteredProducts.filter(p => p.category === 'home');
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'home');
     }
 
     // Filter by color
@@ -158,13 +93,13 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
     }
 
     // Filter by general search terms
-    if (!priceMatch && !mentionedColor && !['wooden', 'wood', 'ceramic', 'pottery', 'pot', 'jewelry', 'ring', 'earring', 'textile', 'macrame', 'fabric', 'basket', 'home'].some(term => query.includes(term))) {
-      filteredProducts = MOCK_PRODUCTS.filter(p => 
-        p.title.toLowerCase().includes(query) ||
-        p.creator.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
-      );
-    }
+    if (!priceMatch) {
+    filteredProducts = filteredProducts.filter(p =>
+      p.name.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query) ||
+      p.artisan?.name?.toLowerCase().includes(query)
+    );
+  }
 
     const botResponse: Message = {
       id: (Date.now() + 1).toString(),
@@ -209,7 +144,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
           type: "bot", 
           content: "Based on your image, I found these similar handcrafted items:",
           timestamp: new Date(),
-          products: MOCK_PRODUCTS.slice(0, 3) // Top 3 similar items
+          products: products.slice(0, 3) // Top 3 similar items
         };
         setMessages(prev => [...prev, botResponse]);
         
@@ -223,16 +158,16 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
   const handleAddToCart = (product: Product) => {
     addToCart({
-      id: product.id,
-      title: product.title,
+      id: product._id,
+      title: product.name,
       price: product.price,
-      image: product.image,
-      artisan: product.creator
+      image: product.images?.[0]?.url || "/placeholder.png",
+      artisan: product.artisan?.name || "Unknown",
     });
-    
+
     toast({
       title: "Added to cart!",
-      description: `${product.title} has been added to your cart.`,
+      description: `${product.name} has been added to your cart.`,
     });
   };
 
@@ -245,7 +180,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
   const handleApplyFilters = (filters: Filters) => {
     const { priceRange, materials, occasions } = filters;
     
-    let filtered = MOCK_PRODUCTS.filter(product => 
+    let filtered = products.filter(product => 
       product.price >= priceRange[0] && product.price <= priceRange[1]
     );
 
@@ -324,9 +259,12 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
                   <div className="mt-3 space-y-2">
                     {message.products.map((product) => (
                       <ProductCard 
-                        key={product.id} 
+                        key={product._id} 
                         product={product}
-                        onAddToCart={handleAddToCart}
+                        onAddToCart={(id) => {
+                          const p = products.find(n => n._id === id);
+                          if (p) handleAddToCart(p);
+                        }}
                       />
                     ))}
                   </div>

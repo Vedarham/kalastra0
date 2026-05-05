@@ -10,6 +10,11 @@ type User = {
   avatar: string;
   phone?: string;
   bio?: string;
+  location?: {
+    city?: string,
+    state?: string,
+    country?: string,
+  }
 };
 
 type AuthContextType = {

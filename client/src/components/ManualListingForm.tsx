@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { createManualProduct } from "@/api/product";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,8 +26,11 @@ interface ManualListingFormProps {
 }
 
 export default function ManualListingForm({ onBack }: ManualListingFormProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
-    title: "",
+    name: "",
     description: "",
     price: "",
     quantity: "",
@@ -35,6 +40,47 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
   });
 
   const [newTag, setNewTag] = useState("");
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+
+      if (!formData.name || !formData.description || !formData.price || !formData.category) {
+        return toast({
+          title: "Missing fields",
+          description: "Please fill all required fields",
+          variant: "destructive",
+        });
+      }
+
+      const data = new FormData();
+
+      data.append("name", formData.name);
+      data.append("description", formData.description);
+      data.append("price", formData.price);
+      data.append("category", formData.category);
+      data.append("quantity", formData.quantity);
+      data.append("tags", JSON.stringify(formData.tags));
+
+      formData.images.forEach((file) => {
+        data.append("images", file);
+      });
+      await createManualProduct(data);
+      toast({
+        title: "Product Created 🎉",
+        description: "Your listing is live!",
+      });
+      onBack();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err?.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
@@ -100,6 +146,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Product Title *</Label>
@@ -107,8 +154,8 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                 <Input
                   id="title"
                   placeholder="Enter a catchy product title..."
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="pr-12"
                 />
                 <AIAssistButton onClick={() => console.log("AI assist for title")} />
@@ -162,13 +209,21 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <div className="relative">
-                <Input
-                  id="category"
-                  placeholder="e.g., Handmade Jewelry, Home Decor, Art..."
+                <select
                   value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="pr-12"
-                />
+                  onChange={(e) =>
+                    setFormData(prev => ({ ...prev, category: e.target.value }))
+                  }
+                  className="w-full border rounded-md p-2"
+                >
+                  <option value="">Select Category</option>
+                  <option value="Jewelry">Jewelry</option>
+                  <option value="Pottery">Pottery</option>
+                  <option value="Textiles">Textiles</option>
+                  <option value="Woodwork">Woodwork</option>
+                  <option value="Art">Art</option>
+                  <option value="Other">Other</option>
+                </select>
                 <AIAssistButton onClick={() => console.log("AI assist for category")} />
               </div>
             </div>
@@ -282,8 +337,13 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
           <Button variant="outline" className="flex-1">
             Save as Draft
           </Button>
-          <Button className="flex-1" size="lg">
-            Publish Listing
+          <Button
+            className="flex-1"
+            size="lg"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Publishing..." : "Publish Listing"}
           </Button>
         </div>
       </div>

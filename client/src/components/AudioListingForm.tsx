@@ -1,9 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   Mic,
@@ -19,6 +18,8 @@ import {
   CircleX,
 } from "lucide-react";
 
+import { generateAIListing } from "@/api/product";
+
 interface AudioListingFormProps {
   onBack: () => void;
 }
@@ -33,10 +34,6 @@ const questions = [
   "Are there any special care instructions or usage tips?",
   "What makes your product unique compared to similar items?",
 ];
-
-const baseUrl = import.meta.env.MODE === "production"
-  ? "https://kalastra0-server.vercel.app"  
-  : "http://localhost:5000";
 
 export default function AudioListingForm({ onBack }: AudioListingFormProps) {
    interface GeneratedData {
@@ -59,6 +56,17 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+  return () => {
+    Object.values(recordings).forEach((blob) => {
+      URL.revokeObjectURL(URL.createObjectURL(blob));
+    });
+    images.forEach((img) => {
+      URL.revokeObjectURL(URL.createObjectURL(img));
+    });
+  };
+}, []);
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -68,10 +76,9 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/wav" });
+        const blob = new Blob(chunks, { type: "audio/webm" });
         setRecordings((prev) => ({ ...prev, [currentQuestion]: blob }));
       };
-
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
@@ -123,7 +130,7 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
       formData.append(
         `audio_question_${questionIndex}`,
         blob,
-        `question_${questionIndex}.wav`
+        `question_${questionIndex}.webm`
       );
     });
 
@@ -132,19 +139,12 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
     });
 
     try {
-      const response = await fetch(
-        `${baseUrl}/api/products/ai-generate-listing`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const data = await generateAIListing(formData);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!data || !data.Title) {
+        throw new Error("Invalid AI response");
       }
 
-      const data = await response.json();
       setGeneratedData(data);
     } catch (error) {
       console.error("Error processing with AI:", error);

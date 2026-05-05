@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema({
-
   name: {
     type: String,
     required: [true, 'Please provide a name'],
@@ -82,15 +81,10 @@ const userSchema = new mongoose.Schema({
     instagram: String,
     facebook: String,
     twitter: String
-  },
-  products: [{ 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "Product" 
-  }], 
-  category: {
-      type: String,
-      enum: ["pottery", "textiles", "jewelry", "painting", "other"],
-    },
+  }, 
+
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   
   // Verification
   isEmailVerified: {

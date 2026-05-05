@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Marketplace from "./pages/Marketplace";
 import CreatorProfile from "./pages/CreatorProfile";
+import ProtectedRoute from "./pages/ProtectedRoutes";
 
 const queryClient = new QueryClient();
 
@@ -36,11 +37,13 @@ const App = () => (
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/creator/:creatorId" element={<CreatorProfile />} />
               <Route path="/seller-dashboard" element={<SellerDashboard />} />
+             <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/favorites" element={<Favorites />} />
+            </Route>
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/payment-methods" element={<PaymentMethods />} />
-              <Route path="/favorites" element={<Favorites />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/oauth-success" element={<OAuthSuccess />} />
               <Route path="/faq" element={<FAQ />} />

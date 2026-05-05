@@ -4,17 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChatButton from "./ChatButton";
 import ChatBox from "./ChatBox";
 import ProductModal from "./ProductModal";
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  creator: string;
-  rating: number;
-  category: string;
-}
+import { Product } from "@/types/product.types";
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -38,16 +28,16 @@ export default function Chatbot() {
 
   const handleAddToCart = (product: Product) => {
     addToCart({
-      id: product.id,
-      title: product.title,
+      id: product._id,
+      title: product.name,
       price: product.price,
-      image: product.image,
-      artisan: product.creator
+      image: product.images?.[0]?.url || "/placeholder.png",
+      artisan: product.artisan?.name || "Unknown",
     });
     
     toast({
       title: "Added to cart!",
-      description: `${product.title} has been added to your cart.`,
+      description: `${product.name} has been added to your cart.`,
     });
   };
 
