@@ -1,12 +1,9 @@
 import express from "express";
-import { becomeArtisan, getMyArtisanProfile, updateArtisanProfile, listArtisans, getArtisanProfile, getTopCreators, followArtisan, unfollowArtisan } from "../controllers/artisanController.js";
+import { getMyArtisanProfile, updateArtisanProfile, listArtisans, getArtisanProfile, getTopCreators, followArtisan, unfollowArtisan } from "../controllers/artisanController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js"
 
 const router = express.Router();
-
-// Become artisan
-router.post("/become-artisan", authMiddleware, becomeArtisan);
 
 // Own profile
 router.get("/me", authMiddleware, authorizeRoles("seller"), getMyArtisanProfile);

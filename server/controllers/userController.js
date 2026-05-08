@@ -4,6 +4,9 @@ import cloudinary from "../config/cloudinary.js";
 export const deleteProfile = async(req,res)=>{
     try {
         const userId = req.user.id;
+        if(req.user.role === "seller"){
+          await Product.updateMany({ artisan: req.user.id }, { isActive: false });
+        }
         await User.findByIdAndDelete(userId);
         res.clearCookie("refreshToken");
         res.status(200).json({
@@ -19,33 +22,40 @@ export const deleteProfile = async(req,res)=>{
     }
 }
 
-export const switchToArtisan = async(req,res)=>{
-    try {
-        const user = await User.findById(req.user.id);
-        if(!user){
-            return res.status(404).json({message: "User not found"});
-        }
-        if (user.role === "seller") {
-            return res.json({ message: "Already a seller" });
-        }
-
-        user.role = "seller";
-        if (!user.shopName) user.shopName = `${user.name}'s Shop`;
-        await user.save();
-
-        res.json({
-        success: true,
-        message: "Switched to seller",
-        role: user.role
-        });
-
-    } catch (error) {
-        res.status(500).json({ 
-            success: false,
-            message: "Unable to Switched to seller",
-            error: error.message });
+export const becomeArtisan = async(req,res)=>{
+  try {
+    const user = await User.findById(req.user.id);
+    if(!user){
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
-}
+    if(user.isSellerVerified  === 'true'){
+      return res.status(400).json({
+        success: false,
+        message: "Already an artisan"
+      });
+    }
+      user.role = "seller";
+      user.isSellerVerified = "false"; 
+      user.shopName = `${user.name}'s Shop`;
+      await user.save();
+      
+    return res.status(200).json({
+      success:true,
+      message: "Artisan mode active. Awaiting verification.",
+      user
+    });
+
+  } catch (error) {
+     return res.status(500).json({
+      success:false,
+      message: "Error switching role",
+      error: error.message
+    })
+  }
+};
 
 export const changePassword = async (req, res) => {
   try {

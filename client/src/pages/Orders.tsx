@@ -1,74 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Eye, MessageCircle, Star, Filter } from "lucide-react";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
+import { getMyOrders } from "@/api/order";
 
 export default function Orders() {
-  const [orders] = useState([
-    {
-      id: "ORD001",
-      date: "2024-01-15",
-      status: "delivered",
-      total: 89.99,
-      items: [
-        {
-          name: "Handwoven Ceramic Bowl",
-          price: 45.00,
-          quantity: 1,
-          image: "/src/assets/product-ceramic-bowl.jpg",
-          seller: "ArtisanCrafts"
-        },
-        {
-          name: "Macrame Wall Hanging",
-          price: 34.99,
-          quantity: 1,
-          image: "/src/assets/product-macrame.jpg",
-          seller: "BohoCreations"
-        }
-      ]
-    },
-    {
-      id: "ORD002", 
-      date: "2024-01-10",
-      status: "shipped",
-      total: 156.50,
-      items: [
-        {
-          name: "Artisan Jewelry Set",
-          price: 125.00,
-          quantity: 1,
-          image: "/src/assets/product-jewelry.jpg",
-          seller: "CraftedGems"
-        },
-        {
-          name: "Handmade Soap Set",
-          price: 31.50,
-          quantity: 1,
-          image: "/placeholder.svg",
-          seller: "NaturalSoaps"
-        }
-      ]
-    },
-    {
-      id: "ORD003",
-      date: "2024-01-05", 
-      status: "processing",
-      total: 67.25,
-      items: [
-        {
-          name: "Wooden Cutting Board",
-          price: 67.25,
-          quantity: 1,
-          image: "/src/assets/product-wooden-board.jpg",
-          seller: "WoodworkShop"
-        }
-      ]
-    }
-  ]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true)
 
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await getMyOrders();
+        setOrders(res.data.orders);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+ 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered": return "bg-green-100 text-green-800";

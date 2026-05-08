@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import heroImage from "@/assets/hero-marketplace.jpg";
+import GaneshaHandloom from "@/assets/Shri-Ganesha-Handloom.mp4";
 
 import { login, register } from "@/api/auth";
 import { setAccessToken } from "@/api/interceptor";
@@ -119,7 +121,7 @@ export default function Auth() {
       });
 
       navigate("/");
-    } catch (error: unknown) {
+    } catch {
       toast({
         title: "Signup failed",
         description: "Try again with different email",
@@ -137,7 +139,22 @@ export default function Auth() {
 
    return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <video 
+        autoPlay 
+        muted 
+        loop 
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover opacity-20 z-10"
+      >
+        <source src={GaneshaHandloom} type="video/mp4" />
+        {/* Fallback image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        />
+      </video>
+      <div className="absolute inset-0 bg-gradient-overlay" />
+      <div className="relative w-full max-w-md z-10">
 
         {/* HEADER */}
         <div className="text-center mb-6">

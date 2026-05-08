@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import Marketplace from "./pages/Marketplace";
 import CreatorProfile from "./pages/CreatorProfile";
 import ProtectedRoute from "./pages/ProtectedRoutes";
+import SellerVerify from "./pages/SellerVerify";
 
 const queryClient = new QueryClient();
 
@@ -35,8 +36,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/creator/:creatorId" element={<CreatorProfile />} />
-              <Route path="/seller-dashboard" element={<SellerDashboard />} />
+              <Route path="/artisans/:artisanId" element={<CreatorProfile />} />
+              <Route path="/seller/dashboard" element={<SellerDashboard />} />
              <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/orders" element={<Orders />} />
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/payment-methods" element={<PaymentMethods />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/oauth-success" element={<OAuthSuccess />} />
+              <Route path="/seller/verify" element={<SellerVerify />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/support" element={<Support />} />
               <Route path="/settings" element={<Settings />} />

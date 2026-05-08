@@ -1,5 +1,5 @@
 import express from "express";
-import { createManualProduct, createAIProduct, getProducts, getMyProducts, getProductById, deleteProduct, updateProduct} from "../controllers/productController.js";
+import { createManualProduct, createAIProduct, getProducts, getMyProducts, getProductById, deleteProduct, updateProduct } from "../controllers/productController.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js"
@@ -46,12 +46,5 @@ router.put("/:id", authMiddleware, authorizeRoles("seller"), upload.array("image
 
 // Delete (soft delete)
 router.delete("/:id", authMiddleware, authorizeRoles("seller"), deleteProduct);
-
-// Get Dashboard
-// router.get("/dashboard",
-//   authMiddleware,
-//   authorizeRoles("admin", "seller"),
-//   getDashboard
-// );
 
 export default router;

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { StripeCardElement } from "@stripe/stripe-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,62 +9,98 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CreditCard, Plus, Trash2, Edit, Shield } from "lucide-react";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
+import { createPayment } from "@/api/payment";
+import { PaymentMethod, NewCardForm, EMPTY_CARD } from "@/types/payment.types";
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// NO GST and CORRECT THE LOADING STATE IN THE CHECKOUT PAGE
+// ALSO WHAT DOES WEBHOOK DOES 
 
 export default function PaymentMethods() {
-  const [paymentMethods, setPaymentMethods] = useState([
-    {
-      id: "1",
-      type: "card",
-      last4: "4242",
-      brand: "Visa",
-      expiryMonth: 12,
-      expiryYear: 2025,
-      isDefault: true
-    },
-    {
-      id: "2", 
-      type: "card",
-      last4: "5555",
-      brand: "Mastercard",
-      expiryMonth: 8,
-      expiryYear: 2026,
-      isDefault: false
+  
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [newCard, setNewCard] = useState<NewCardForm>(EMPTY_CARD);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const orderId = new URLSearchParams(window.location.search).get("orderId") ?? "";
+
+  const handleAddCard = async () => {
+    setLoading(true);
+    setError(null);
+    if(!newCard.cardNumber || !newCard.name || !newCard.expiryMonth || !newCard.expiryYear || !newCard.cvv) {
+      setError("Please fill in all fields");
+      setLoading(false);
+      return;
     }
-  ]);
+    try{
+      const {data} = await createPayment(orderId);
+      const {clientSecret} = data;
+      const stripe = await stripePromise;
+      if(!stripe) {
+        setError("Stripe failed to initialize");
+        setLoading(false);
+        return;
+      }
 
-  const [newCard, setNewCard] = useState({
-    cardNumber: "",
-    expiryMonth: "",
-    expiryYear: "",
-    cvv: "",
-    name: ""
-  });
+      const {error:stripeError, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: {
+            number: newCard.cardNumber,
+            exp_month: parseInt(newCard.expiryMonth),
+            exp_year: parseInt(newCard.expiryYear),
+            cvc: newCard.cvv,
+          },
+          billing_details: {
+            name: newCard.name,
+          },
+        },
+      });
 
-  const handleAddCard = () => {
-    // Mock add card functionality
-    const newPaymentMethod = {
-      id: Date.now().toString(),
-      type: "card",
-      last4: newCard.cardNumber.slice(-4),
-      brand: "Visa", // Would be determined by card number
-      expiryMonth: parseInt(newCard.expiryMonth),
-      expiryYear: parseInt(newCard.expiryYear),
-      isDefault: paymentMethods.length === 0
-    };
-    
-    setPaymentMethods([...paymentMethods, newPaymentMethod]);
-    setNewCard({ cardNumber: "", expiryMonth: "", expiryYear: "", cvv: "", name: "" });
+      if(stripeError) {
+        setError(stripeError.message || "Payment failed");
+        setLoading(false);
+        return;
+      }
+
+      if(paymentIntent && paymentIntent.status === "succeeded") {
+        // In a real app, you would fetch the updated payment methods from the server here
+        setPaymentMethods((prev) => [
+          ...prev,
+          {
+            id: paymentIntent.id,
+            brand: "Visa", // This should come from Stripe's response in a real app
+            last4: newCard.cardNumber.slice(-4),
+            expiryMonth: parseInt(newCard.expiryMonth),
+            expiryYear: parseInt(newCard.expiryYear),
+            isDefault: prev.length === 0, // Set as default if it's the first card
+          },
+        ]);
+        setNewCard(EMPTY_CARD);
+      } else {
+        setError("Payment failed");
+      }
+    }catch{
+      setError("An error occurred while processing your payment");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = (id: string) => {
-    setPaymentMethods(paymentMethods.filter(method => method.id !== id));
+      setPaymentMethods((prev) => {
+        const filtered = prev.filter((m) => m.id !== id);
+        if (filtered.length > 0 && !filtered.some((m) => m.isDefault)) {
+          filtered[0].isDefault = true;
+        }
+        return filtered;
+      });
   };
 
   const handleSetDefault = (id: string) => {
-    setPaymentMethods(paymentMethods.map(method => ({
-      ...method,
-      isDefault: method.id === id
-    })));
+    setPaymentMethods((prev) =>
+      prev.map((method) => ({ ...method, isDefault: method.id === id }))
+    );
   };
 
   const getBrandIcon = (brand: string) => {
@@ -71,12 +109,10 @@ export default function PaymentMethods() {
         return "💳";
       case "mastercard":
         return "💳";
-      case "amex":
-        return "💳";
       default:
         return "💳";
-    }
-  };
+      };
+    };
 
   return (
     <div className="min-h-screen bg-background">

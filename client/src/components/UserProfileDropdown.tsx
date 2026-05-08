@@ -24,7 +24,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { logout } from "@/api/auth";
+import { becomeArtisan, logout } from "@/api/auth";
 
 export default function UserProfileDropdown() {
   const navigate = useNavigate();
@@ -47,6 +47,26 @@ export default function UserProfileDropdown() {
     }
   };
 
+  const handleBecomeArtisan = async () => {
+    try {
+      const res = await becomeArtisan();
+
+      setUser(res.user);
+
+      toast({
+        title: "You're now an artisan 🎨",
+        description: "Start selling your creations!",
+      });
+
+      navigate("/seller/dashboard");
+    } catch {
+      toast({
+        title: "Failed to switch role",
+        variant: "destructive",
+      });
+    }
+};
+
   const handleNavigation = (path: string) => {
     navigate(path);
   };
@@ -61,7 +81,7 @@ export default function UserProfileDropdown() {
 
   const initials = user?.name
     ? user.name.split(" ").map((n: string) => n[0]).join("")
-    : "U";
+    : "NA";
 
   return (
     <DropdownMenu>
@@ -151,10 +171,11 @@ export default function UserProfileDropdown() {
         
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => handleNavigation('/creator/:creatorId')} className="p-3 cursor-pointer">
+        {user.role !== "seller" &&
+        <DropdownMenuItem onClick={handleBecomeArtisan} className="p-3 cursor-pointer">
           <Handshake className="mr-3 h-4 w-4" />
-          <span>Switch to Artisan</span>
-        </DropdownMenuItem>
+          <span>Become an Artisan</span>
+        </DropdownMenuItem>}
         
         <DropdownMenuItem onClick={handleLogout} className="p-3 cursor-pointer text-destructive">
           <LogOut className="mr-3 h-4 w-4" />

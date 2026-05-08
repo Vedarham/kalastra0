@@ -19,7 +19,7 @@ export const createProduct = async (data: FormData) => {
 
 // Create product Manually
 export const createManualProduct = async (data: FormData) => {
-  const res = await api.post("/manual", data);
+  const res = await api.post("/products/manual", data);
   return res.data;
 };
 

@@ -6,10 +6,9 @@ import { ArrowLeft, Smartphone, CreditCard, Building2, Wallet, Check } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 
-interface PaymentOptionsProps {
-  total: number;
-  onBack: () => void;
-}
+import {createPayment} from "@/api/payment";
+import { PaymentOptionsProps } from "@/types/payment.types";
+
 
 const paymentMethods = [
   {

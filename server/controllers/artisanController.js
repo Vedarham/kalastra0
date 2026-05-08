@@ -1,42 +1,10 @@
 import User from "../models/User.model.js";
-
-export const becomeArtisan = async(req,res)=>{
-  try {
-    const user = await User.findById(req.user.id);
-    if(!user){
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-    if(user.role === 'seller'){
-      return res.status(400).json({
-        success: false,
-        message: "Already an artisan"
-      });
-    }
-    user.role = "seller"
-    user.shopName = `${user.name}'s Shop`;
-    await user.save();
-
-    return res.status(200).json({
-      success:true,
-      message: "Switched to artisan successfully",
-      data: user
-    });
-
-  } catch (error) {
-     return res.status(500).json({
-      success:false,
-      message: "Error switching role",
-      error: error.message
-    })
-  }
-};
+import Product from "../models/Product.model.js"
 
 export const getMyArtisanProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate("products");
+    const user = await User.findById(req.user.id)
+    const products = await Product.find({ artisan: req.user.id, isActive: true });
     if (!user ){
       return res.status(404).json({
         success: false,
@@ -51,7 +19,8 @@ export const getMyArtisanProfile = async (req, res) => {
     }
     return res.status(200).json({ 
       success: true, 
-      artisan: user 
+      artisan: user,
+      products,
     });
   } catch (error) {
     return res.status(500).json({
@@ -64,22 +33,19 @@ export const getMyArtisanProfile = async (req, res) => {
 export const getArtisanProfile = async (req, res) => {
   try {
     const artisan = await User.findById(req.params.id)
-      .select("name shopName shopDescription category rating avatar location createdAt isSellerVerified totalSales")
-      .populate({
-        path: "products",
-        select: "name price images rating numReviews",
-      })
-
-    if (!artisan || artisan.role !== "seller") {
+    const products = await Product.find({ artisan: artisan._id });
+    
+    if(!artisan || artisan.role !== "seller") {
       return res.status(404).json({
         success: false,
         message: "Artisan not found"
       });
     }
 
-    return res.json.status(200)({ 
+    return res.status(200).json({ 
       success: true, 
-      artisan, 
+      artisan,
+      products
     });
 
   } catch (error) {

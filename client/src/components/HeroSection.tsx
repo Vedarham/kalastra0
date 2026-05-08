@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import heroImage from "@/assets/hero-marketplace.jpg";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import SellOptionsDialog from "./SellOptionsDialog";
 import GaneshaHandloom from "@/assets/Shri-Ganesha-Handloom.mp4";
 

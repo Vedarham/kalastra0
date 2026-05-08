@@ -15,6 +15,7 @@ type User = {
     state?: string,
     country?: string,
   }
+  isSellerVerified?: boolean;
 };
 
 type AuthContextType = {

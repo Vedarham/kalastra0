@@ -12,40 +12,44 @@ import { useEffect, useState } from "react";
 import { followArtisan, getArtisan, unfollowArtisan } from "@/api/artisan";
 
 export default function CreatorProfile() {
-  const { creatorId } = useParams();
+  const { artisanId } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  const [creator, setCreator] = useState(null);
+  const [artisan, setArtisan] = useState(null);
+  const [products, setProducts] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCreator = async () => {
+    const fetchArtisan = async () => {
       try {
-        const res = await getArtisan(creatorId!);
-        setCreator(res.data.artisan);
+        const res = await getArtisan(artisanId!);
+        setArtisan(res.data.artisan);
+        setProducts(res.data.products);
       } catch {
-        setCreator(null);
+        setArtisan(null);
+        setProducts(null);
       } finally {
         setLoading(false);
       }
     };
 
-    if (creatorId) fetchCreator();
-  }, [creatorId]);
+    if (artisanId) fetchArtisan();
+  }, [artisanId]);
 
-  if (loading) {
-  return <div className="p-10 text-center">Loading artisan...</div>;
-  }
+    if (loading) {
+    return <div className="p-10 text-center">Loading artisan...</div>;
+    }
 
-  if (!creator) {
+  if (!artisan) {
+    console.log(products)
     return (
       <div className="min-h-screen bg-background">
         <MarketplaceHeader />
         <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Creator not found</h1>
+          <h1 className="text-2xl font-bold mb-4">artisan not found</h1>
           <Button onClick={() => navigate('/')}>Back to Home</Button>
         </div>
       </div>
@@ -61,32 +65,32 @@ export default function CreatorProfile() {
   };
 
   const handleAddToCart = (productId: string) => {
-    const product = creator.products?.find((p) => p._id === productId);
+    const product = artisan.products?.find((p) => p._id === productId);
     if (product) addToCart(product);
 
   };
 
-  // const handleFollow = async () => {
-  //   try {
-  //     if (isFollowing) {
-  //       await unfollowArtisan(creatorId!);
-  //       setCreator((prev: any) => ({
-  //         ...prev,
-  //         followers: prev.followers - 1,
-  //       }));
-  //     } else {
-  //       await followArtisan(creatorId!);
-  //       setCreator((prev: any) => ({
-  //         ...prev,
-  //         followers: prev.followers + 1,
-  //       }));
-  //     }
+  const handleFollow = async () => {
+    try {
+      if (isFollowing) {
+        await unfollowArtisan(artisanId!);
+        setArtisan((prev: any) => ({
+          ...prev,
+          followers: prev.followers - 1,
+        }));
+      } else {
+        await followArtisan(artisanId!);
+        setArtisan((prev: any) => ({
+          ...prev,
+          followers: prev.followers + 1,
+        }));
+      }
 
-  //     setIsFollowing(!isFollowing);
-  //   } catch {
-  //     console.error("Follow failed");
-  //   }
-  // };
+      setIsFollowing(!isFollowing);
+    } catch {
+      console.error("Follow failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,12 +111,12 @@ export default function CreatorProfile() {
           <div className="flex flex-col md:flex-row gap-8 items-start">
             <div className="relative">
               <Avatar className="w-32 h-32 border-4 border-background shadow-lg">
-                <AvatarImage src={creator.avatar} alt={creator.name} />
+                <AvatarImage src={artisan.avatar} alt={artisan.name} />
                 <AvatarFallback className="text-2xl">
-                  {creator.name.split(' ').map(n => n[0]).join('')}
+                  {artisan.name.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
-              {creator.isSellerVerified && (
+              {artisan.isSellerVerified && (
                 <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground">
                   ✓ Verified
                 </Badge>
@@ -120,33 +124,33 @@ export default function CreatorProfile() {
             </div>
             
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-foreground mb-2">{creator.name}</h1>
-              <p className="text-xl text-muted-foreground mb-4">{creator.category}</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{artisan.name}</h1>
+              <p className="text-xl text-muted-foreground mb-4">{artisan.category}</p>
               
               <div className="flex items-center gap-6 mb-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  <span>{creator.location?.city}, {creator.location?.state}</span>
+                  <span>{artisan.location?.city}, {artisan.location?.state}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  <span>Joined {new Date(creator.createdAt).toLocaleDateString()}</span>
+                  <span>Joined {new Date(artisan.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
               
               <div className="flex items-center gap-6 mb-6">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-semibold">{creator.followers}</span>
+                  <span className="font-semibold">{artisan.followers}</span>
                   <span className="text-muted-foreground">followers</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                  <span className="font-semibold">{creator.rating}</span>
+                  <span className="font-semibold">{artisan.rating}</span>
                   <span className="text-muted-foreground">rating</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{creator.totalSales}</span>
+                  <span className="font-semibold">{artisan.totalSales}</span>
                   <span className="text-muted-foreground">sales</span>
                 </div>
               </div>
@@ -154,7 +158,7 @@ export default function CreatorProfile() {
               <div className="flex items-center gap-3">
                 <Button 
                   variant={isFollowing ? "outline" : "marketplace"}
-                  onClick={() => setIsFollowing(!isFollowing)}
+                  onClick={handleFollow}
                   className="gap-2"
                 >
                   <Heart className={`h-4 w-4 ${isFollowing ? 'fill-current' : ''}`} />
@@ -186,12 +190,12 @@ export default function CreatorProfile() {
             <div className="mb-6">
               <h2 className="text-2xl font-bold mb-2">Collections</h2>
               <p className="text-muted-foreground">
-                Discover unique handmade pieces by {creator.name}
+                Discover unique handmade pieces by {artisan.name}
               </p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {creator.products?.map((product: any) => (
+              {products?.map((product: any) => (
                 <ProductCard
                   key={product._id}
                   product={product}
@@ -205,11 +209,11 @@ export default function CreatorProfile() {
           
           <TabsContent value="about" className="mt-8">
             <div className="max-w-3xl">
-              <h2 className="text-2xl font-bold mb-4">About {creator.name}</h2>
-              <p className="text-lg text-muted-foreground mb-6">{creator.shopDescription}</p>
+              <h2 className="text-2xl font-bold mb-4">About {artisan.name}</h2>
+              <p className="text-lg text-muted-foreground mb-6">{artisan.shopDescription}</p>
               
               <h3 className="text-xl font-semibold mb-3">Story</h3>
-              <p className="text-muted-foreground leading-relaxed">{creator.bio}</p>
+              <p className="text-muted-foreground leading-relaxed">{artisan.bio}</p>
             </div>
           </TabsContent>
           
@@ -219,9 +223,9 @@ export default function CreatorProfile() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-2xl font-bold">{creator.rating}</span>
+                  <span className="text-2xl font-bold">{artisan.rating}</span>
                 </div>
-                <span className="text-muted-foreground">Based on {creator.totalSales} sales</span>
+                <span className="text-muted-foreground">Based on {artisan.totalSales} sales</span>
               </div>
             </div>
             

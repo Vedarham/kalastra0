@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/token.utils.js";
+import OTP from "../models/otp.model.js";
+import { generateOTP, hashOTP } from "../utils/generateOTP.utils.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -75,7 +77,7 @@ export const loginUser = async (req, res) => {
     return res.status(400).json({ message: "Email and password required" });
   }
 
-email = email.toLowerCase().trim();
+  email = email.toLowerCase().trim();
 
   const user = await User.findOne({ email }).select("+password");
   if (!user) return res.status(400).json({ message: "Invalid credentials" });
@@ -284,6 +286,112 @@ export const refreshAccessToken = async (req, res) => {
     return res.status(401).json({
       success: false,
       message: "Invalid or expired refresh token"
+    });
+  }
+};
+
+export const sendVerificationOtp = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const existing = await OTP.findOne({ userId });
+
+    if (existing && existing.expiresAt > Date.now()) {
+      return res.status(429).json({
+        success: false,
+        message: "Wait before requesting new OTP",
+      });
+    }
+
+    const otp = generateOTP();
+    const hashedOtp = hashOTP(otp);
+
+    // ♻️ Upsert (one OTP per user)
+    await OTP.findOneAndUpdate(
+      { userId },
+      {
+        otp: hashedOtp,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
+      },
+      { upsert: true, new: true }
+    );
+    console.log("OTP (dev):", otp);
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { otp } = req.body;
+
+    const record = await OTP.findOne({ userId });
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        message: "No OTP found",
+      });
+    }
+
+    if (record.expiresAt < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    if (record.attempts >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many attempts",
+      });
+    }
+
+    const hashedOtp = hashOTP(otp);
+
+    if (hashedOtp !== record.otp) {
+      record.attempts += 1;
+      await record.save();
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+    const user = await User.findById(userId);
+
+    user.isSellerVerified = true;
+    await user.save();
+
+    await OTP.deleteOne({ userId });
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification successful",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isSellerVerified: user.isSellerVerified,
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

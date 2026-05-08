@@ -1,189 +1,282 @@
 import Order from "../models/Order.model.js";
-import Stripe from "stripe";
 import Product from "../models/Product.model.js";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const createOrder = async (req, res) => {
   try {
-    const {
-      items,
-      shippingAddress,
-      billingAddress,
-      payment,
-      pricing,
-      notes
-    } = req.body;
+    const { items, shippingAddress, pricing, payment } = req.body;
 
-   if (!items || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No order items'
-      });
+    if (!items?.length) {
+      return res.status(400).json({ success: false, message: "No items in order" });
     }
+    const enrichedItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await Product.findById(item.product);
 
-    for(let item of items){
-      const product = await Product.findById(item.product);
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product not found: ${item.name}`
-        });
-      }
-      if (product.inventory.trackInventory && product.inventory.quantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for ${product.name}`
-        });
-      }
-      item.seller = product.seller;
-      item.name = product.name;
-      item.image = product.images[0]?.url;
+        if (!product || !product.isActive) {
+          throw new Error(`Product ${item.product} not found`);
+        }
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${product.name}`);
+        }
 
-    }
+        // Deduct stock
+        product.stock -= item.quantity;
+        await product.save();
+
+        return {
+          product: product._id,
+          seller: product.artisan,
+          name: product.name,                        // snapshot
+          image: product.images?.[0]?.url || "",     // snapshot
+          price: product.price,                      // snapshot
+          quantity: item.quantity,
+        };
+      })
+    );
 
     const order = await Order.create({
       buyer: req.user.id,
-      items,
+      items: enrichedItems,
       shippingAddress,
-      billingAddress: billingAddress || shippingAddress,
-      payment,
       pricing,
-      notes: { buyer: notes }
+      payment,
     });
 
-    for(let item of items){
-      const product = await Product.findById(item.product);
-      if(product.inventory.trackInventory){
-        product.inventory.quantity -= item.quantity;
-      }
-      product.sales += item.quantity;
-      await product.save();
-    }
-    await order.populate('buyer', 'name email phone');
-    await order.populate('items.product', 'name images');
-    await order.populate('items.seller', 'name shopName email');
+    return res.status(201).json({ success: true, order });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-    res.status(201).json({
+// Buyer's own orders
+export const getMyOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const query = { buyer: req.user.id };
+    if (status) query.status = status;
+
+    const orders = await Order.find(query)
+      .populate("items.product", "name images price")
+      .populate("items.seller", "name shopName avatar")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Order.countDocuments(query);
+
+    return res.status(200).json({
       success: true,
-      message: 'Order created successfully',
-      data: order
+      orders,
+      pagination: { total, page: Number(page), pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error creating order',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const paymentIntent = async (req, res, ) => {
-  const {totalAmount} = req.body;
-  if(totalAmount<=0 || !totalAmount){
-    return res.status(400).json({ success: false, message: "Invalid amount" });
-  }
+export const getOrderById = async (req, res) => {
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount * 100,
-      currency: "usd",
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
+    const order = await Order.findById(req.params.id)
+      .populate("items.product", "name images price")
+      .populate("items.seller", "name shopName avatar")
+      .populate("buyer", "name email");
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const isBuyer = order.buyer._id.toString() === req.user.id;
+    const isSeller = order.items.some(i => i.seller._id.toString() === req.user.id);
+
+    if (!isBuyer && !isSeller) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    return res.status(200).json({ success: true, order });
   } catch (error) {
-    console.error("Error creating payment intent:", error);
-    res.status(500).send({ error: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const updatePaymentStatus = async (req, res) => {
+export const cancelOrder = async (req, res) => {
   try {
-    const { status, transactionId } = req.body;
     const order = await Order.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-    order.payment.status = status;
-    if (transactionId) order.payment.transactionId = transactionId;
-    if (status === 'paid') {
-      order.isPaid = true;
-      order.payment.paidAt = new Date();
-      order.status = 'confirmed';
-    }
-    await order.save();
-    res.json({
-      success: true,
-      message: 'Payment status updated successfully',
-      data: order
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error updating payment status',
-      error: error.message
-    });
-  }
-};
-
-export const getUserOrders = async (req, res, next) => {
-  try {
-    const orders = await Order.find({ buyer: req.user._id })
-      .populate("products.productId", "title price images")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, orders });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getOrderById = async (req, res, next) => {
-  try {
-    const order = await Order.findOne({
-      _id: req.params.orderId,
-      buyer: req.user._id,
-    }).populate("products.productId", "title price images");
 
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
-
-    res.status(200).json({ success: true, order });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const cancelOrder = async (req, res, next) => {
-  try {
-    const order = await Order.findOne({
-      _id: req.params.orderId,
-      buyer: req.user._id,
-    });
-
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+    if (order.buyer.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
     }
-
-    if (order.status !== "pending") {
-      return res.status(400).json({
-        success: false,
-        message: "Only pending orders can be cancelled",
-      });
+    if (!["pending", "confirmed"].includes(order.status)) {
+      return res.status(400).json({ success: false, message: "Order cannot be cancelled at this stage" });
     }
 
     order.status = "cancelled";
-    await order.save();
+    order.cancelledBy = "buyer";
+    order.cancelReason = req.body.reason || "";
+    order.cancelledAt = new Date();
 
-    res.status(200).json({ success: true, message: "Order cancelled", order });
+    // Restore stock
+    await Promise.all(
+      order.items.map(async (item) => {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { stock: item.quantity },
+        });
+      })
+    );
+
+    await order.save();
+    return res.status(200).json({ success: true, order });
   } catch (error) {
-    next(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Orders containing partcular seller's products
+export const getSellerOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+
+    const query = { "items.seller": req.user.id };
+    if (status) query["items.status"] = status;
+
+    const orders = await Order.find(query)
+      .populate("buyer", "name email avatar")
+      .populate("items.product", "name images price")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Order.countDocuments(query);
+
+    const filtered = orders.map((order) => ({
+      ...order.toObject(),
+      items: order.items.filter((i) => i.seller.toString() === req.user.id),
+    }));
+
+    return res.status(200).json({
+      success: true,
+      orders: filtered,
+      pagination: { total, page: Number(page), pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update status of seller's own item within an order
+export const updateItemStatus = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const { status } = req.body;
+
+    const allowed = ["processing", "confirmed", "cancelled"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+    if (item.seller.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    item.status = status;
+
+    // Sync top-level order status from all items
+    const allStatuses = order.items.map((i) => i.status);
+    if (allStatuses.every((s) => s === "confirmed")) order.status = "confirmed";
+    else if (allStatuses.every((s) => s === "cancelled")) order.status = "cancelled";
+    else if (allStatuses.some((s) => s === "processing")) order.status = "processing";
+
+    await order.save();
+    return res.status(200).json({ success: true, order });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Real stats for seller dashboard
+export const getSellerStats = async (req, res) => {
+  try {
+    const sellerId = req.user.id;
+
+    const orders = await Order.find({
+      "items.seller": sellerId,
+      "payment.status": "paid",
+    });
+
+    let totalRevenue = 0;
+    let totalOrders = 0;
+
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (item.seller.toString() === sellerId) {
+          totalRevenue += item.price * item.quantity;
+          totalOrders += 1;
+        }
+      });
+    });
+
+    const totalProducts = await Product.countDocuments({
+      artisan: sellerId,
+      isActive: true,
+    });
+
+    // Monthly revenue for chart (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthlyData = await Order.aggregate([
+      {
+        $match: {
+          "items.seller": sellerId,        
+          "payment.status": "paid",
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $match: { "items.seller": sellerId },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const revenueChart = monthlyData.map((d) => ({
+      month: months[d._id.month - 1],
+      revenue: d.revenue,
+      orders: d.orders,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalRevenue,
+        totalOrders,
+        totalProducts,
+        revenueChart,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

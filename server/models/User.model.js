@@ -91,6 +91,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false
+  },
   isSellerVerified: {
     type: Boolean,
     default: false
@@ -121,7 +125,7 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
   
 }, { timestamps: true });
 

@@ -1,5 +1,5 @@
 import express from "express";
-import { registerUser, loginUser, googleCallback, getMe, updateProfile, logoutUser, refreshAccessToken  } from "../controllers/authController.js";
+import { registerUser, loginUser, googleCallback, getMe, updateProfile, logoutUser, refreshAccessToken, sendVerificationOtp, verifyOtp  } from "../controllers/authController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import passport from "passport";
 
@@ -33,6 +33,10 @@ router.put("/me", authMiddleware, updateProfile);
 
 // Refresh Token
 router.post("/refresh", refreshAccessToken);
+
+// OTP
+router.post("/send-otp", authMiddleware, sendVerificationOtp);
+router.post("/verify-otp", authMiddleware, verifyOtp);
 
 // Logout user
 router.post("/logout",authMiddleware, logoutUser);
