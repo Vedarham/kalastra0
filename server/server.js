@@ -87,8 +87,8 @@ app.use('/api/support', supportRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-
+  console.error('Unhandled Error:', err);
+  
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({
       success: false,
@@ -102,22 +102,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-const startServer = async () => {
+// Database connection logic
+let isConnected = false;
+const connectToDatabase = async () => {
+  if (isConnected) return;
   try {
     await connectDB();
-
-    // On Vercel, we do NOT call app.listen()
-    if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
-      const PORT = process.env.PORT || 5000;
-      app.listen(PORT, () => {
-        console.log(`Server running on PORT: ${PORT}`);
-      });
-    }
+    isConnected = true;
+    console.log('Database connected successfully');
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('Database connection failed:', error);
   }
 };
 
-startServer();
+// Start DB connection in the background
+connectToDatabase();
 
-export default app
+// Middleware to ensure DB connection for API routes
+app.use('/api', async (req, res, next) => {
+  await connectToDatabase();
+  next();
+});
+
+// For local development
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on PORT: ${PORT}`);
+  });
+}
+
+export default app;
