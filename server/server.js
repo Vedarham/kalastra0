@@ -24,12 +24,11 @@ import { stripeWebhook } from './controllers/paymentController.js';
 const app = express()
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  process.env.CORS_ORIGIN
+  process.env.CORS_ORIGIN,
 ].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
 
     const isAllowed = allowedOrigins.includes(origin) ||
@@ -106,7 +105,9 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-    if (!process.env.VERCEL) {
+
+    // On Vercel, we do NOT call app.listen()
+    if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
       const PORT = process.env.PORT || 5000;
       app.listen(PORT, () => {
         console.log(`Server running on PORT: ${PORT}`);
