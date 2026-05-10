@@ -22,9 +22,29 @@ import supportRoutes from './routes/supportRoutes.js'
 import { stripeWebhook } from './controllers/paymentController.js';
 
 const app = express()
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    const isAllowed = allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost');
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(cookieParser());
 app.use("/api/payments/stripe/webhook",
@@ -66,13 +86,35 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/support', supportRoutes);
 
-const startServer = async () => {
-  await connectDB();
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
 
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on PORT: ${PORT}`);
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS policy: This origin is not allowed.'
+    });
+  }
+
+  res.status(500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error'
   });
+});
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    if (!process.env.VERCEL) {
+      const PORT = process.env.PORT || 5000;
+      app.listen(PORT, () => {
+        console.log(`Server running on PORT: ${PORT}`);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to start server:', error);
+  }
 };
 
 startServer();
