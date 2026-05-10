@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Product } from "@/types/product.types";
+import { useEffect, useState } from "react";
+import { getProductReviews } from "@/api/review";
 
 interface ProductModalProps {
   product: Product | null;
@@ -13,6 +15,16 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductModalProps) {
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen && product) {
+      getProductReviews(product._id).then(res => setReviews(res.data || [])).catch(console.error);
+    } else {
+      setReviews([]);
+    }
+  }, [isOpen, product]);
+
   if (!product) return null;
 
   const discountPercent = product.price 
@@ -151,24 +163,27 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
         <div className="mt-6">
           <h3 className="font-semibold mb-4">Customer Reviews</h3>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="border border-border rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex">
-                    {[...Array(5)].map((_, j) => (
-                      <Star
-                        key={j}
-                        className="h-3 w-3 fill-marketplace-featured text-marketplace-featured"
-                      />
-                    ))}
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No reviews yet.</p>
+            ) : (
+              reviews.map((review) => (
+                <div key={review._id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, j) => (
+                        <Star
+                          key={j}
+                          className={`h-3 w-3 ${j < review.rating ? 'fill-marketplace-featured text-marketplace-featured' : 'text-muted-foreground'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium">{review.user?.name || "Anonymous User"}</span>
                   </div>
-                  <span className="text-sm font-medium">Anonymous User</span>
+                  {review.title && <h4 className="font-medium text-sm">{review.title}</h4>}
+                  <p className="text-sm text-muted-foreground">"{review.comment}"</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  "Beautiful craftsmanship and excellent quality. Highly recommended!"
-                </p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </DialogContent>

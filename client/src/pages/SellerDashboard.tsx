@@ -17,7 +17,6 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowLeft,
-  // LineChart,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -38,15 +37,21 @@ import {
   Cell,
   AreaChart,
   Area,
-  // Line,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-// import { Select, SelectItem } from "@/components/ui/select";
+import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { getSellerOrders, getSellerStats } from "@/api/order";
-// import { getMyProducts } from "@/api/product";
+import { getMyProducts, deleteProduct, updateProduct } from "@/api/product";
+import SellOptionsDialog from "@/components/SellOptionsDialog";
+import { useToast } from "@/hooks/use-toast";
+import { Product } from "@/types/product.types";
 
 type RevenuePoint = { month: string; revenue: number; orders: number };
 
@@ -110,13 +115,18 @@ const STATUS_STYLES: Record<string, string> = {
 const SellerDashboard = () => {
   const { user, isAuthLoading } = useAuth();
   const navigate = useNavigate();
-  // const [products, setProducts] = useState([]);
-  // const [selectedProduct, setSelectedProduct] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  // const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [isSellOptionsOpen, setIsSellOptionsOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", description: "", price: 0, category: "", stock: 1 });
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -159,23 +169,73 @@ const SellerDashboard = () => {
     fetchOrders();
   }, [user]);
 
-  // useEffect(() => {
-  //   if (!user || user.role !== "seller") return;
+  useEffect(() => {
+    if (!user || user.role !== "seller") return;
 
-  //   const fetchProducts = async () => {
-  //     try {
-  //       const res = await getMyProducts();
-  //       setProducts(res.data.products || []);
-  //     } catch (err) {
-  //       console.error("Products fetch failed:", err);
-  //       setProducts([]);
-  //     } finally {
-  //       setLoadingProducts(false);
-  //     }
-  //   };
+    const fetchProducts = async () => {
+      try {
+        const res = await getMyProducts();
+        setProducts(res.products || []);
+        if (res.products && res.products.length > 0) {
+          setSelectedProduct(res.products[0]._id);
+        }
+      } catch (err) {
+        console.error("Products fetch failed:", err);
+        setProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
 
-  //   fetchProducts();
-  // }, [user]);
+    fetchProducts();
+  }, [user]);
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      setIsDeleting(id);
+      await deleteProduct(id);
+      setProducts(prev => prev.filter(p => p._id !== id));
+      toast({ title: "Product deleted successfully" });
+    } catch (err) {
+      toast({ title: err.response?.data?.message || "Failed to delete product", variant: "destructive" });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    try {
+      const formData = new FormData();
+      formData.append("name", editForm.name);
+      formData.append("description", editForm.description);
+      formData.append("price", String(editForm.price));
+      formData.append("category", editForm.category);
+      formData.append("stock", String(editForm.stock));
+      
+      await updateProduct(editingProduct._id, formData);
+      setProducts(prev => prev.map(p => p._id === editingProduct._id ? { ...p, ...editForm } : p));
+      toast({ title: "Product updated successfully" });
+      setEditingProduct(null);
+    } catch (err) {
+      toast({ title: err.response?.data?.message || "Failed to update product", variant: "destructive" });
+    }
+  };
+
+  const handleToggleActive = async (product: Product) => {
+    try {
+      const formData = new FormData();
+      formData.append("isActive", String(!product.isActive));
+      
+      await updateProduct(product._id, formData);
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isActive: !product.isActive } : p));
+      toast({ title: `Product ${!product.isActive ? 'activated' : 'discontinued'} successfully` });
+    } catch (err: any) {
+      toast({ title: err.response?.data?.message || "Failed to update product status", variant: "destructive" });
+    }
+  };
   
   if (isAuthLoading) {
     return (
@@ -189,8 +249,18 @@ const SellerDashboard = () => {
 
   const revenueData: RevenuePoint[] = stats?.revenueChart ?? [];
 
-  // const filteredProductData = [];
-  // const productComparisonData = [];
+  // Use real product.sales field; show a simple bar for total sales
+  const productComparisonData = products.slice(0, 5).map((p) => ({
+    productName:
+      p.name.length > 15 ? p.name.substring(0, 15) + "…" : p.name,
+    sales: (p as any).sales ?? 0,
+  }));
+
+  // For the area chart of the selected product, show its cumulative sales as a flat reference
+  const selectedProductObj = products.find((p) => p._id === selectedProduct);
+  const filteredProductData = selectedProductObj
+    ? [{ month: "Total", sales: (selectedProductObj as any).sales ?? 0 }]
+    : [];
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -288,8 +358,8 @@ const SellerDashboard = () => {
 
         {/* ── Analytics Tabs ── */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            {/* <TabsTrigger value="products">Products</TabsTrigger> */}
+          <TabsList className="grid w-full grid-cols-5 ">
+            <TabsTrigger value="products">My Products</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="regions">Regions</TabsTrigger>
@@ -297,7 +367,77 @@ const SellerDashboard = () => {
           </TabsList>
 
           {/* Products */}
-          {/* <TabsContent value="products">
+          <TabsContent value="products">
+            <Card className="mb-6">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>My Products</CardTitle>
+                  <CardDescription>Manage your inventory and update details.</CardDescription>
+                </div>
+                <Button onClick={() => setIsSellOptionsOpen(true)}>Add New Product</Button>
+              </CardHeader>
+              <CardContent>
+                {loadingProducts ? (
+                  <p className="text-muted-foreground text-sm">Loading products...</p>
+                ) : products.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No products listed yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {products.map((product) => (
+                      <div
+                        key={product._id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <img src={product.images?.[0]?.url || "/placeholder.png"} alt={product.name} className="w-12 h-12 rounded object-cover" />
+                          <div>
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{product.price} • Stock: {product.stock || 0}
+                              {!product.isActive && <span className="ml-2 text-red-500 font-semibold">(Discontinued)</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={() => handleToggleActive(product)}
+                          >
+                            {product.isActive === false ? "Activate" : "Discontinue"}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setEditForm({
+                                name: product.name,
+                                description: product.description || "",
+                                price: product.price,
+                                category: product.category,
+                                stock: product.stock ?? 1
+                              });
+                            }}
+                          >
+                            Update
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            disabled={isDeleting === product._id}
+                            onClick={() => handleDeleteProduct(product._id)}
+                          >
+                            {isDeleting === product._id ? "..." : "Delete"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -305,28 +445,34 @@ const SellerDashboard = () => {
                   <CardDescription>Monthly sales for selected product</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Select onValueChange={setSelectedProduct}>
-                    {products.map((p) => (
-                      <SelectItem key={p._id} value={p._id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
+                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
 
                   <ChartContainer config={chartConfig} className="h-[300px] mt-4">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={filteredProductData}>
+                      <AreaChart data={filteredProductData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line
+                        <Area
                           type="monotone"
                           dataKey="sales"
                           stroke="hsl(var(--primary))"
-                          strokeWidth={2}
+                          fill="hsl(var(--primary))"
+                          fillOpacity={0.2}
                         />
-                      </LineChart>
+                      </AreaChart>
                     </ResponsiveContainer>
                   </ChartContainer>
                 </CardContent>
@@ -335,7 +481,7 @@ const SellerDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Product Performance</CardTitle>
-                  <CardDescription>Total sales per product</CardDescription>
+                  <CardDescription>Estimated sales per product</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={chartConfig} className="h-[300px]">
@@ -352,39 +498,38 @@ const SellerDashboard = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent> */}
-
+          </TabsContent>
 
           {/* Overview */}
           <TabsContent value="overview">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Trend</CardTitle>
-                  <CardDescription>Monthly revenue over last 6 months</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {revenueData.length === 0 ? (
-                    <EmptyChart message="No revenue data yet" />
-                  ) : (
-                    <ChartContainer config={chartConfig} className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={revenueData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Area
-                            type="monotone"
-                            dataKey="revenue"
-                            stroke="hsl(var(--primary))"
-                            fill="hsl(var(--primary))"
-                            fillOpacity={0.2}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue Trend</CardTitle>
+                <CardDescription>Monthly revenue over last 6 months</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {revenueData.length === 0 ? (
+                  <EmptyChart message="No revenue data yet" />
+                ) : (
+                  <ChartContainer config={chartConfig} className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={revenueData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="hsl(var(--primary))"
+                          fill="hsl(var(--primary))"
+                          fillOpacity={0.2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                )}
                 </CardContent>
               </Card>
 
@@ -591,6 +736,78 @@ const SellerDashboard = () => {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={isSellOptionsOpen} onOpenChange={setIsSellOptionsOpen}>
+        <SellOptionsDialog />
+      </Dialog>
+
+      <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input 
+                value={editForm.name}
+                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea 
+                value={editForm.description}
+                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                required
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Price (₹)</Label>
+                <Input 
+                  type="number"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Stock Quantity</Label>
+                <Input 
+                  type="number"
+                  value={editForm.stock}
+                  onChange={(e) => setEditForm({...editForm, stock: Number(e.target.value)})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={editForm.category} onValueChange={(val) => setEditForm({...editForm, category: val})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pottery">Pottery</SelectItem>
+                    <SelectItem value="Textiles">Textiles</SelectItem>
+                    <SelectItem value="Jewelry">Jewelry</SelectItem>
+                    <SelectItem value="Woodwork">Woodwork</SelectItem>
+                    <SelectItem value="Art">Art</SelectItem>
+                    <SelectItem value="Home">Home Decor</SelectItem>
+                    <SelectItem value="Accessories">Accessories</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditingProduct(null)}>Cancel</Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

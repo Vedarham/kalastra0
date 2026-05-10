@@ -1,6 +1,6 @@
 import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import kalastraLogo from '../assets/Kalastra.png';
+import kalastraLogo from '../assets/Kalastra.jpg';
 
 const Footer = () => {
   return (
@@ -10,7 +10,7 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary-glow rounded-lg flex items-center justify-center">
+              <div className="w-20 h-12 border border-primary bg-gradient-to-br from-primary to-primary-glow rounded-lg flex items-center justify-center">
                <img src={kalastraLogo} alt="Kalastra Logo" className="w-full h-full object-cover rounded-lg" />
               </div>
               <span className="text-xl font-bold text-foreground">Kalastra</span>

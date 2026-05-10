@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getMe, refreshToken } from "../api/auth.ts";
 import { setAccessToken } from "@/api/interceptor.ts";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type User = {
   _id: string;
@@ -11,10 +12,20 @@ type User = {
   phone?: string;
   bio?: string;
   location?: {
-    city?: string,
-    state?: string,
-    country?: string,
-  }
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+  preferences?: {
+    language?: string;
+    currency?: string;
+    theme?: string;
+  };
+  privacy?: {
+    profileVisible?: boolean;
+    showEmail?: boolean;
+    allowMessages?: boolean;
+  };
   isSellerVerified?: boolean;
 };
 
@@ -30,30 +41,32 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const { applyThemeFromUser } = useTheme();
 
   const loadUser = useCallback(async () => {
     try {
       const res = await getMe();
-      setUser(res.data.user);
+      const loadedUser = res.data.user;
+      setUser(loadedUser);
+      applyThemeFromUser(loadedUser?.preferences?.theme);
     } catch {
       setUser(null);
     } finally {
       setIsAuthLoading(false);
     }
-  }, []);
+  }, [applyThemeFromUser]);
 
   useEffect(() => {
     const initAuth = async () => {
-    try {
-      const res = await refreshToken();
-      setAccessToken(res.data.accessToken);
-      await loadUser();
-    } catch {
-      setUser(null);
-      setIsAuthLoading(false);
-    }
-  };
-
+      try {
+        const res = await refreshToken();
+        setAccessToken(res.data.accessToken);
+        await loadUser();
+      } catch {
+        setUser(null);
+        setIsAuthLoading(false);
+      }
+    };
     initAuth();
   }, [loadUser]);
 

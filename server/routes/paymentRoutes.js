@@ -4,8 +4,7 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// Webhooks — 
-
+// Webhooks
 router.post("/stripe/webhook",  express.raw({ type: "application/json" }), stripeWebhook);
 router.post("/razorpay/webhook", express.json(), razorpayWebhook);
 

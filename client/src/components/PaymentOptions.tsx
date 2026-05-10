@@ -1,143 +1,165 @@
 import { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Smartphone, CreditCard, Building2, Wallet, Check } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { createPayment } from "@/api/payment";
 
-import {createPayment} from "@/api/payment";
-import { PaymentOptionsProps } from "@/types/payment.types";
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string);
 
+interface PaymentOptionsProps {
+  total: number;
+  orderId: string;
+  currency?: "INR" | "USD";
+  onBack: () => void;
+  onSuccess?: () => void;
+}
 
-const paymentMethods = [
-  {
-    id: 'upi',
-    name: 'UPI',
-    icon: Smartphone,
-    description: 'Pay using UPI apps like GPay, PhonePe, Paytm',
-    popular: true
-  },
-  {
-    id: 'card',
-    name: 'Credit/Debit Card',
-    icon: CreditCard,
-    description: 'Visa, Mastercard, RuPay cards accepted'
-  },
-  {
-    id: 'netbanking',
-    name: 'Net Banking',
-    icon: Building2,
-    description: 'All major banks supported'
-  },
-  {
-    id: 'wallet',
-    name: 'Digital Wallets',
-    icon: Wallet,
-    description: 'Paytm, PhonePe, Amazon Pay, etc.'
-  }
-];
+// ─── Inner form — must live inside <Elements> ─────────────────────────────────
+function StripeCardForm({
+  orderId,
+  total,
+  currency,
+  onSuccess,
+  onError,
+}: {
+  orderId: string;
+  total: number;
+  currency: string;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
 
-export default function PaymentOptions({ total, onBack }: PaymentOptionsProps) {
-  const [selectedMethod, setSelectedMethod] = useState<string>('');
-  const [processing, setProcessing] = useState(false);
-  const { toast } = useToast();
-  const { clearCart } = useCart();
+  const symbol = currency === "INR" ? "₹" : "$";
 
-  const handlePayment = async () => {
-    if (!selectedMethod) {
-      toast({
-        title: "Please select a payment method",
-        variant: "destructive"
+  const handlePay = async () => {
+    if (!stripe || !elements) return;
+    setBusy(true);
+    try {
+      const { data } = await createPayment(orderId);
+      const card = elements.getElement(CardElement);
+      if (!card) throw new Error("Card element not mounted");
+
+      const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: { card },
       });
-      return;
+
+      if (error) throw new Error(error.message);
+      if (paymentIntent?.status === "succeeded") {
+        onSuccess();
+      } else {
+        throw new Error("Payment incomplete. Status: " + paymentIntent?.status);
+      }
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : "Payment failed");
+    } finally {
+      setBusy(false);
     }
-
-    setProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
-      clearCart();
-      toast({
-        title: "Payment Successful!",
-        description: `Payment of $${total.toFixed(2)} completed successfully`,
-      });
-      onBack();
-    }, 2000);
   };
 
   return (
-    <div className="space-y-4 max-h-[50vh] overflow-y-auto">
-      <div className="flex items-center gap-2 sticky top-0 bg-background pb-2">
+    <div className="space-y-4">
+      {/* Stripe hosted card input */}
+      <div className="rounded-md border px-3 py-3 bg-background">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "15px",
+                color: "hsl(var(--foreground))",
+                fontFamily: "inherit",
+                "::placeholder": { color: "hsl(var(--muted-foreground))" },
+              },
+              invalid: { color: "hsl(var(--destructive))" },
+            },
+          }}
+        />
+      </div>
+
+      <Button className="w-full" size="lg" onClick={handlePay} disabled={busy || !stripe}>
+        {busy ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Processing…
+          </span>
+        ) : (
+          `Pay ${symbol}${total.toFixed(2)}`
+        )}
+      </Button>
+
+      <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Secured by Stripe — your card details never touch our servers
+      </div>
+    </div>
+  );
+}
+
+// ─── Wrapper with <Elements> provider ────────────────────────────────────────
+export default function PaymentOptions({
+  total,
+  orderId,
+  currency = "INR",
+  onBack,
+  onSuccess,
+}: PaymentOptionsProps) {
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { clearCart } = useCart();
+  const symbol = currency === "INR" ? "₹" : "$";
+
+  const handleSuccess = () => {
+    clearCart();
+    toast({ title: "Payment Successful!", description: "Your order has been confirmed." });
+    onSuccess?.();
+    onBack();
+  };
+
+  const handleError = (msg: string) => {
+    setError(msg);
+    toast({ title: "Payment Failed", description: msg, variant: "destructive" });
+  };
+
+  return (
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center gap-2 sticky top-0 bg-background pb-2 z-10">
         <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h3 className="font-semibold">Choose Payment Method</h3>
-      </div>
-      
-      <div className="space-y-3 px-1">
-        {paymentMethods.map((method) => {
-          const Icon = method.icon;
-          return (
-            <Card 
-              key={method.id}
-              className={`cursor-pointer transition-all hover:shadow-soft ${
-                selectedMethod === method.id ? 'ring-2 ring-primary bg-primary/5' : ''
-              }`}
-              onClick={() => setSelectedMethod(method.id)}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{method.name}</span>
-                      {method.popular && (
-                        <span className="text-xs bg-marketplace-featured text-white px-2 py-0.5 rounded-full">
-                          Popular
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{method.description}</p>
-                  </div>
-                  {selectedMethod === method.id && (
-                    <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                      <Check className="h-3 w-3 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <h3 className="font-semibold">Card Payment</h3>
       </div>
 
-      <div className="sticky bottom-0 bg-background pt-2">
-        <Separator className="mb-4" />
-      
-        <div className="flex justify-between items-center text-lg font-semibold mb-4">
-          <span>Total Amount:</span>
-          <span className="text-marketplace-price">${total.toFixed(2)}</span>
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-2 rounded-md bg-destructive/10 text-destructive text-sm p-3">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          {error}
         </div>
-      
-        <Button 
-          className="w-full" 
-          onClick={handlePayment}
-          disabled={!selectedMethod || processing}
-        >
-          {processing ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Processing...
-            </div>
-          ) : (
-            `Pay $${total.toFixed(2)}`
-          )}
-        </Button>
+      )}
+
+      {/* Total */}
+      <div className="flex justify-between items-center text-base font-semibold px-1">
+        <span>Total</span>
+        <span>{symbol}{total.toFixed(2)}</span>
       </div>
+      <Separator />
+
+      {/* Stripe form */}
+      <Elements stripe={stripePromise}>
+        <StripeCardForm
+          orderId={orderId}
+          total={total}
+          currency={currency}
+          onSuccess={handleSuccess}
+          onError={handleError}
+        />
+      </Elements>
     </div>
   );
 }

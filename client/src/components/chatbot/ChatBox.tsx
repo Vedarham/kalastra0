@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Send, Camera, Filter, BotMessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSearch } from "@/components/SearchContext";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import ChatMessage from "./ChatMessage";
@@ -35,9 +35,19 @@ const QUICK_ACTIONS = [
 
 
 export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
-  const { products, setSearchQuery, setSearchResults } = useSearch();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toast } = useToast();
+  
+  // To avoid breaking the rest of ChatBox, let's keep a local products list or remove the references.
+  // Actually, we can fetch all products or just mock it here if needed, 
+  // but since we want to navigate, we'll just navigate.
+  const [products, setProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    import("@/api/product").then(({ getAllProducts }) => {
+      getAllProducts().then(res => setProducts(res.products || []));
+    });
+  }, []);
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -74,15 +84,15 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
     // Filter by material/category
     if (query.includes('wooden') || query.includes('wood')) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'woodwork');
+      filteredProducts = filteredProducts.filter(p => p.category?.toLowerCase() === 'woodwork');
     } else if (query.includes('ceramic') || query.includes('pottery') || query.includes('pot')) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'pottery');
+      filteredProducts = filteredProducts.filter(p => p.category?.toLowerCase() === 'pottery');
     } else if (query.includes('jewelry') || query.includes('ring') || query.includes('earring')) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'jewelry');
+      filteredProducts = filteredProducts.filter(p => p.category?.toLowerCase() === 'jewelry');
     } else if (query.includes('textile') || query.includes('macrame') || query.includes('fabric')) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'textiles');
+      filteredProducts = filteredProducts.filter(p => p.category?.toLowerCase() === 'textiles');
     } else if (query.includes('basket') || query.includes('home')) {
-      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === 'home');
+      filteredProducts = filteredProducts.filter(p => p.category?.toLowerCase() === 'home');
     }
 
     // Filter by color
@@ -94,12 +104,12 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
     // Filter by general search terms
     if (!priceMatch) {
-    filteredProducts = filteredProducts.filter(p =>
-      p.name.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query) ||
-      p.artisan?.name?.toLowerCase().includes(query)
-    );
-  }
+      filteredProducts = filteredProducts.filter(p =>
+        p.name?.toLowerCase().includes(query) ||
+        p.category?.toLowerCase().includes(query) ||
+        p.artisan?.name?.toLowerCase().includes(query)
+      );
+    }
 
     const botResponse: Message = {
       id: (Date.now() + 1).toString(),
@@ -114,9 +124,15 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
     setMessages(prev => [...prev, userMessage, botResponse]);
     setInputValue("");
     
-    // Update main search context
-    setSearchQuery(inputValue);
-    setSearchResults(filteredProducts.map(p => ({ ...p, type: 'product' })));
+    if (query.includes("search for") || query.includes("find") || query.includes("show me")) {
+      const searchTerm = query.replace(/search for|find|show me/g, "").trim();
+      if (searchTerm) {
+        setTimeout(() => {
+          navigate(`/marketplace?q=${encodeURIComponent(searchTerm)}`);
+          onClose();
+        }, 1500);
+      }
+    }
   };
 
   const handleQuickAction = (action: string) => {
@@ -186,7 +202,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
     if (materials.length > 0) {
       filtered = filtered.filter(product => {
-        const productMaterial = product.category.toLowerCase();
+        const productMaterial = product.category?.toLowerCase() || "";
         return materials.some((material: string) => 
           productMaterial.includes(material.toLowerCase()) ||
           (material.toLowerCase() === 'wood' && productMaterial === 'woodwork') ||
@@ -262,7 +278,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
                         key={product._id} 
                         product={product}
                         onAddToCart={(id) => {
-                          const p = products.find(n => n._id === id);
+                          const p = products.find(n => n._id.toString() === id.toString());
                           if (p) handleAddToCart(p);
                         }}
                       />

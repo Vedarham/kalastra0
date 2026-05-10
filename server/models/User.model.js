@@ -18,10 +18,10 @@ const userSchema = new mongoose.Schema({
     index: true
   },
   googleId: {
-      type: String,
-      index: true,
-      sparse: true,
-    },
+    type: String,
+    index: true,
+    sparse: true,
+  },
   password: {
     type: String,
     required: function () {
@@ -58,14 +58,19 @@ const userSchema = new mongoose.Schema({
     country: String
   },
   phone: {
-  type: String,
-  match: [/^\+?[0-9]{7,15}$/, "Invalid phone number"]
+    type: String,
+    match: [/^\+?[0-9]{7,15}$/, "Invalid phone number"]
+  },
+  preferences: {
+    language: { type: String, default: 'en' },
+    currency: { type: String, default: 'usd' },
+    theme: { type: String, default: 'system' }
   },
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   }],
-  
+
   // Seller-specific fields
   shopName: {
     type: String,
@@ -81,11 +86,11 @@ const userSchema = new mongoose.Schema({
     instagram: String,
     facebook: String,
     twitter: String
-  }, 
+  },
 
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  
+
   // Verification
   isEmailVerified: {
     type: Boolean,
@@ -99,7 +104,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  
+
   // Stats
   totalSales: {
     type: Number,
@@ -115,18 +120,18 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  
+
   resetPasswordToken: String,
   resetPasswordExpire: Date,
-  
+
   // emailVerificationToken: String,
   // emailVerificationExpire: Date,
-  
+
   isActive: {
     type: Boolean,
     default: true
   },
-  
+
 }, { timestamps: true });
 
 userSchema.pre("save", async function (next) {

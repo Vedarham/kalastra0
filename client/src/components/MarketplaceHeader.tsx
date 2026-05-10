@@ -1,75 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Plus, User, Menu } from "lucide-react";
-import { useState } from "react";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Plus, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import SellOptionsDialog from "./SellOptionsDialog";
 import CartDrawer from "./CartDrawer";
 import UserProfileDropdown from "./UserProfileDropdown";
 import { useSearch } from "./SearchContext";
-
-import kalastraLogo from '../assets/Kalastra.png';
+import kalastraLogo from '../assets/Kalastra.jpg';
 
 export default function MarketplaceHeader() {
-  const { searchQuery, setSearchQuery, setSearchResults, setIsSearching } = useSearch();
+  const { searchQuery, setSearchQuery} = useSearch();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      setIsSearching(true);
-      // Mock search - filter products by title or category
-      const mockData = {
-        products: [
-          { id: 1, title: "Handmade Terracotta Vase", category: "pottery", price: 45, type: "product" },
-          { id: 2, title: "Walnut Wood Spice Box", category: "woodwork", price: 32, type: "product" },
-          { id: 3, title: "Bandhani Dupatta", category: "textiles", price: 28, type: "product" },
-          { id: 4, title: "Kundan Necklace", category: "jewelry", price: 75, type: "product" },
-          { id: 5, title: "Leather Jutti", category: "accessories", price: 65, type: "product" },
-        ],
-        creators: [
-          { id: 1, name: "Ananya Sharma", specialty: "Ceramic Artist", type: "creator" },
-          { id: 2, name: "Priya Patel", specialty: "Textile Designer", type: "creator" },
-          { id: 3, name: "Rohan Mehta", specialty: "Woodworker", type: "creator" },
-          { id: 4, name: "Isha Singh", specialty: "Jewelry Designer", type: "creator" },
-        ],
-        categories: [
-          { id: "pottery", name: "Pottery", icon: "🏺", type: "category" },
-          { id: "textiles", name: "Textiles", icon: "🧶", type: "category" },
-          { id: "jewelry", name: "Jewelry", icon: "💍", type: "category" },
-          { id: "woodwork", name: "Woodwork", icon: "🪵", type: "category" },
-          { id: "accessories", name: "Accessories", icon: "👜", type: "category" },
-        ],
-        collections: [
-          { id: 1, name: "Terracotta Collection", creator: "Ananya Sharma", type: "collection" },
-          { id: 2, name: "Bandhani Collection", creator: "Priya Patel", type: "collection" },
-          { id: 3, name: "Kundan Jewelry Collection", creator: "Isha Singh", type: "collection" },
-        ]
-      };
-      
-      const query = searchQuery.toLowerCase();
-      const results = [
-        ...mockData.products.filter(item => 
-          item.title.toLowerCase().includes(query) || 
-          item.category.toLowerCase().includes(query)
-        ),
-        ...mockData.creators.filter(item => 
-          item.name.toLowerCase().includes(query) || 
-          item.specialty.toLowerCase().includes(query)
-        ),
-        ...mockData.categories.filter(item => 
-          item.name.toLowerCase().includes(query)
-        ),
-        ...mockData.collections.filter(item => 
-          item.name.toLowerCase().includes(query) || 
-          item.creator.toLowerCase().includes(query)
-        )
-      ];
-      
-      setSearchResults(results);
-      setIsSearching(false);
-      navigate('/marketplace');
+      navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -83,8 +30,8 @@ export default function MarketplaceHeader() {
               <Menu className="h-6 w-6" />
             </Button>
             <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-gradient-hero rounded-lg">
-                <img src={kalastraLogo} alt="Kalastra Logo" className="w-full h-full object-cover rounded-lg" />
+              <div className="w-20 h-10 border border-black bg-gradient-hero rounded-lg">
+                <img src={kalastraLogo} alt="Kalastra Logo" className="w-full h-full object-cover rounded-md" />
               </div>
               <h1 className="text-2xl font-bold text-foreground hidden sm:block">
                 Kalastra

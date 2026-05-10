@@ -190,21 +190,19 @@ export default function FAQ() {
           {/* Contact Section */}
           <Card className="mt-8">
             <CardContent className="p-6">
-              <div className="text-center">
+              <div className="grid gap-4 text-center">
                 <h3 className="text-xl font-semibold mb-2">Still have questions?</h3>
                 <p className="text-muted-foreground mb-6">
                   Can't find what you're looking for? Our support team is here to help.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button className="flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4" />
-                    Start Live Chat
-                  </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = "mailto:support@kalastra.com"}
+                  >
                     <Mail className="h-4 w-4" />
                     Email Support
                   </Button>
-                </div>
               </div>
             </CardContent>
           </Card>

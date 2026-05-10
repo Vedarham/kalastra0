@@ -6,10 +6,23 @@ import uploadToCloudinary from "../utils/uploadToCloudinary.js"
 
 export const getProducts = async (req, res) => {
   try {
-    const { category, page = 1, limit = 10 } = req.query;
+    const { category, page = 1, limit = 10, q } = req.query;
 
     const query = { isActive: true };
-    if (category) query.category = category;
+
+    if (category) query.category = new RegExp(`^${category}$`, "i");
+
+    if (q && q.trim()) {
+      // Escape special regex characters to prevent ReDoS
+      const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(escaped, "i");
+      query.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex },
+        { seoTags: searchRegex },
+      ];
+    }
 
     const products = await Product.find(query)
       .populate("artisan", "shopName name avatar")
@@ -65,15 +78,24 @@ export const getProductById = async (req, res) => {
 
 export const createManualProduct = async (req, res) => {
   try {
-    const { name, description, price, category } = req.body;
+    const { name, description, price, category, quantity } = req.body;
+    let tags = [];
+    try {
+      if (req.body.tags) tags = JSON.parse(req.body.tags);
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid format. Must be a JSON array of strings."
+      });
+    }
 
     if (!name || !description || !price || !category) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required"
+      });
     }
-    const aiResult = await enrichProduct(`${name} ${description}`);
-    
+
     let images = [];
     if (req.files?.length) {
       images = await Promise.all(
@@ -88,25 +110,26 @@ export const createManualProduct = async (req, res) => {
     }
 
     const product = await Product.create({
-      name: aiResult?.title || name,
-      description: aiResult?.description || description,
+      name,
+      description,
       price,
       category,
       artisan: req.user.id,
-      tags: aiResult?.tags || [],
-      seoTip: aiResult?.seoTip || "Optimize tags for more reach",
-      images
+      tags,
+      seoTip: req.body.seoTip || "Optimize tags for more reach",
+      images,
+      quantity: quantity ? Number(quantity) : 1,
+      stock: quantity ? Number(quantity) : 1
     });
 
-    res.status(201).json({ 
-      success: true, 
-      product, 
-      aiSuggestions: aiResult,
+    res.status(201).json({
+      success: true,
+      product
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -118,10 +141,10 @@ export const createAIProduct = async (req, res) => {
       .filter(([key]) => key.startsWith("audio_question_"))
       .map(([, val]) => val[0]);
 
-    if (!audioFiles.length){
-      return res.status(400).json({ 
-        success: false, 
-        message: "No audio uploaded" 
+    if (!audioFiles.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No audio uploaded"
       });
     }
 
@@ -132,10 +155,13 @@ export const createAIProduct = async (req, res) => {
 
     const combinedText = transcribedResponses.join("\n");
     // console.log("Transcribed:", combinedText);
-    const aiResponse = await enrichProduct(combinedText); 
+    const aiResponse = await enrichProduct(combinedText);
     // console.log("Gemini AI Response:", aiResponse);
 
-    if (!aiResponse?.title || !aiResponse?.description) {
+    const title = aiResponse?.Title || aiResponse?.title;
+    const description = aiResponse?.Description || aiResponse?.description;
+
+    if (!title || !description) {
       return res.status(500).json({
         success: false,
         message: "AI failed to generate product",
@@ -157,13 +183,13 @@ export const createAIProduct = async (req, res) => {
     );
 
     const product = await Product.create({
-      name: aiResponse.title,
-      description: aiResponse.description,
-      price: aiResponse.price || 0,
-      category: aiResponse.category || "Other",
+      name: aiResponse.Title || aiResponse.title,
+      description: aiResponse.Description || aiResponse.description,
+      price: aiResponse.Price || aiResponse.price || 0,
+      category: aiResponse.Category || aiResponse.category || "Other",
       artisan: req.user.id,
       images,
-      tags: aiResponse.tags || [],
+      tags: aiResponse.SEO_Tags || aiResponse.tags || [],
     });
 
     return res.status(201).json({
@@ -174,21 +200,34 @@ export const createAIProduct = async (req, res) => {
     });
   } catch (error) {
     console.error(" Error in creating Product:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
+  }
+};
+
+export const enrichProductData = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ success: false, message: "Text is required for enrichment" });
+    }
+    const aiResult = await enrichProduct(text);
+    res.status(200).json({ success: true, aiResult });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, category, removeImages } = req.body;
+    const { name, description, price, category, stock, removeImages } = req.body;
 
     const product = await Product.findById(id);
 
-    if (!product || !product.isActive) {
+    if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found",
@@ -201,7 +240,7 @@ export const updateProduct = async (req, res) => {
         message: "Unauthorized",
       });
     }
-    
+
     if (removeImages?.length) {
       await Promise.all(
         removeImages.map(async (publicId) => {
@@ -232,6 +271,14 @@ export const updateProduct = async (req, res) => {
     product.description = description || product.description;
     product.price = price || product.price;
     product.category = category || product.category;
+    if (stock !== undefined) {
+      product.stock = Number(stock);
+    }
+    
+    if (req.body.isActive !== undefined) {
+      product.isActive = req.body.isActive === 'true' || req.body.isActive === true;
+      product.status = product.isActive ? 'active' : 'discontinued';
+    }
 
     await product.save();
 
@@ -273,7 +320,6 @@ export const getMyProducts = async (req, res) => {
   try {
     const products = await Product.find({
       artisan: req.user.id,
-      isActive: true,
     }).sort({ createdAt: -1 });
 
     res.json({
@@ -301,16 +347,26 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    if (product.artisan.toString() !== req.user.id) {
+    if ( product.artisan.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this product",
       });
     }
 
-    // Soft delete
-    product.isActive = false;
-    await product.save();
+    // Delete associated images from Cloudinary
+    if (product.images?.length) {
+      await Promise.all(
+        product.images.map(async (img) => {
+          if (img.publicId) {
+            await cloudinary.uploader.destroy(img.publicId);
+          }
+        })
+      );
+    }
+
+    // Hard delete
+    await product.deleteOne();
 
     return res.status(200).json({
       success: true,

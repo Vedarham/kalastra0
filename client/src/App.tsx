@@ -11,7 +11,6 @@ import Profile from "./pages/Profile";
 import SellerDashboard from "./pages/SellerDashboard";
 import Orders from "./pages/Orders";
 import Notifications from "./pages/Notifications";
-import PaymentMethods from "./pages/PaymentMethods";
 import Favorites from "./pages/Favorites";
 import Auth from "./pages/Auth";
 import FAQ from "./pages/FAQ";
@@ -38,13 +37,12 @@ const App = () => (
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/artisans/:artisanId" element={<CreatorProfile />} />
               <Route path="/seller/dashboard" element={<SellerDashboard />} />
-             <Route element={<ProtectedRoute />}>
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/favorites" element={<Favorites />} />
-            </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/favorites" element={<Favorites />} />
+              </Route>
               <Route path="/notifications" element={<Notifications />} />
-              <Route path="/payment-methods" element={<PaymentMethods />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/oauth-success" element={<OAuthSuccess />} />
               <Route path="/seller/verify" element={<SellerVerify />} />

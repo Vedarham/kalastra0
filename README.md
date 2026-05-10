@@ -1,14 +1,22 @@
 # Kalastra - Artisan Marketplace
 
-Kalastra is a full-stack e-commerce platform designed for artisans and creators to showcase and sell their handmade products. It features a modern, responsive user interface and a robust backend, enhanced with AI-powered features to improve user experience.
+Kalastra is a full-stack e-commerce platform designed for artisans and creators to showcase and sell their handmade products. It features a modern, responsive user interface and a robust backend, enhanced with AI-powered features to improve the user experience.
 
-## Project Overview
+## Development Journey & Improvements
 
-The platform serves as a digital marketplace where users can browse and purchase unique, handcrafted items. Creators can manage their own profiles, list products, and track their sales. Key features include an AI-powered chatbot for customer support and a novel speech-to-text functionality that allows sellers to list products simply by describing them verbally.
+The frontend of this application was initially generated using **Lovable**, providing a beautiful and functional UI foundation. From there, the project has been a hands-on learning experience focused on **necessary improvements and full-stack integrations**. 
+
+### Purpose of Improvements
+The primary goal of the ongoing improvements has been to bridge the gap between a static, generated frontend and a fully functional, production-ready backend. This includes:
+- Replacing mock data with dynamic database interactions.
+- Securing API routes and implementing robust authentication/authorization.
+- Refining complex user flows like the Seller Dashboard (CRUD operations) and secure Profile Management.
+- Integrating real-time and third-party APIs (Google Gemini, Cloudinary, Speech-to-Text).
+- Learning and applying best practices in MERN stack architecture, state management, and RESTful API design.
 
 ## Tech Stack
 
-The project is a monorepo divided into a `client` and a `Server`.
+The project is a monorepo divided into a `client` (Frontend) and a `server` (Backend).
 
 ### Client
 
@@ -19,7 +27,7 @@ The project is a monorepo divided into a `client` and a `Server`.
 | **Styling**   | Tailwind CSS                                     |
 | **UI Library**| shadcn/ui                                        |
 | **State Mgmt**| React Context API                                |
-| **Package Mgr**| `npm` / `bun`                                    |
+| **Routing**   | React Router                                     |
 
 ### Server
 
@@ -28,8 +36,8 @@ The project is a monorepo divided into a `client` and a `Server`.
 | **Runtime**   | Node.js                                          |
 | **Framework** | Express.js                                       |
 | **Database**  | MongoDB (with Mongoose ODM)                      |
-| **Auth**      | JSON Web Tokens (JWT)                            |
-| **Services**  | Firebase (Storage), Google Gemini, DeepGram Speech-to-Text |
+| **Auth**      | JSON Web Tokens (JWT) & bcrypt                   |
+| **Services**  | Cloudinary (Storage), Google Gemini (AI), DeepGram (Speech-to-Text) |
 
 ---
 
@@ -41,36 +49,34 @@ Kalastra/
 │   ├── controllers/  # Request handlers (MVC Controller)
 │   ├── models/       # Mongoose schemas for MongoDB
 │   ├── routes/       # API endpoint definitions
-│   ├── services/     # Business logic for external APIs (Gemini, Firebase)
-│   ├── middlewares/  # Custom middleware (e.g., auth)
-│   ├── config/       # Configuration files (e.g., Firebase admin)
+│   ├── services/     # Business logic for external APIs (Gemini)
+│   ├── middlewares/  # Custom middleware (e.g., auth, role validation, upload)
+│   ├── config/       # Configuration files (e.g., Cloudinary, DB)
 │   └── server.js     # Main server entry point
 │
 └── client/
     ├── src/
-    │   ├── pages/        # Top-level page components
+    │   ├── pages/        # Top-level page components (Marketplace, Dashboard)
     │   ├── components/   # Reusable React components (UI and logic)
-    │   ├── contexts/     # Global state management (e.g., CartContext)
-    │   ├── hooks/        # Custom React hooks
-    │   ├── assets/       # Static assets like images and videos
+    │   ├── contexts/     # Global state management (Auth, Cart)
+    │   ├── api/          # Axios interceptors and API service functions
+    │   ├── assets/       # Static assets like images and icons
     │   └── main.tsx      # Main application entry point
     └── vite.config.ts    # Vite build configuration
 ```
 
-### Key Directories
+## Key Features
 
--   **`server/controllers`**: Contains the logic to handle incoming API requests, interact with models, and send responses.
--   **`server/models`**: Defines the data structure for the application's database collections (Users, Products, Orders, etc.).
--   **`server/routes`**: Maps API endpoints (e.g., `/api/products`) to the corresponding controller functions.
--   **`server/services`**: Encapsulates logic for interacting with third-party services like Google Gemini for the chatbot and Firebase for file storage.
--   **`client/pages`**: Each file corresponds to a major route/view in the application (e.g., Marketplace, Profile).
--   **`client/components`**: Contains a library of reusable components, from basic UI elements in `components/ui` to complex features like the `ChatBot`.
--   **`client/contexts`**: Provides global state for features like the shopping cart, making state accessible across the component tree.
+- **Artisan Marketplace:** Browse, filter, and purchase unique handcrafted items with dynamic, backend-driven category sorting.
+- **Seller Dashboard:** Comprehensive product management allowing artisans to Add, Edit, and Delete their listings while viewing performance metrics.
+- **AI-Powered Chatbot:** "KalaBot" helps users find products based on natural language queries, color preferences, and price ranges.
+- **Voice-to-Text Listing:** Sellers can list products simply by speaking their descriptions, utilizing speech-to-text and AI enrichment.
+- **Review System:** Authenticated users can leave reviews and star ratings on products they have purchased.
+- **Secure Profiles:** Users can manage their personal details, preferences, and securely update their passwords.
+- **Artisan Verification:** Identity verification for sellers using email-based OTP to ensure platform authenticity and trust.
+- **Secure Payments:** Integrated with Stripe for secure and seamless checkout experiences.
 
-## APIs & Services
-
--   **Internal REST API**: The `server` exposes a RESTful API for all standard CRUD (Create, Read, Update, Delete) operations related to users, products, carts, and orders.
--   **Google Gemini API**: Powers the intelligent chatbot, providing users with assistance and product recommendations.
--   **Google Speech-to-Text API**: Used in the `AudioListingForm` to transcribe a creator's spoken product description into text, simplifying the product listing process.
--   **Firebase Storage**: Used for hosting and serving user-uploaded content, such as product images and profile pictures.
-
+## Future Roadmap
+- Enhancing the notification system (Email/SMS).
+- Adding real-time chat between buyers and sellers.
+- Implementing Razorpay payment gateway integration.

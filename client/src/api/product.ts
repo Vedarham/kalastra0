@@ -23,9 +23,17 @@ export const createManualProduct = async (data: FormData) => {
   return res.data;
 };
 
-// Get all products
-export const getAllProducts = async (): Promise<ProductResponse> => {
-  const {data} = await api.get("/products");
+// Enrich product details
+export const enrichProductDetails = async (text: string) => {
+  const { data } = await api.post("/products/enrich", { text });
+  return data;
+};
+
+// Get all products (with optional text search)
+export const getAllProducts = async (q?: string): Promise<ProductResponse> => {
+  const params: Record<string, string> = {};
+  if (q && q.trim()) params.q = q.trim();
+  const { data } = await api.get("/products", { params });
   return data;
 };
 
@@ -55,6 +63,6 @@ export const deleteProduct = async (id: string): Promise<ProductResponse> => {
 
 // Seller products
 export const getMyProducts = async () => {
-  const res = await api.get("/products/me");
+  const res = await api.get("/products/my");
   return res.data;
 };

@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-marketplace.jpg";
+import kalastraLogo from '../assets/Kalastra.jpg';
 import GaneshaHandloom from "@/assets/Shri-Ganesha-Handloom.mp4";
 
 import { login, register } from "@/api/auth";
@@ -157,9 +158,19 @@ export default function Auth() {
       <div className="relative w-full max-w-md z-10">
 
         {/* HEADER */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white">Kalastra</h1>
-          <p className="text-white/80">Join the artisan community</p>
+        <div className="mb-4 flex items-center gap-4">
+          <div className="w-40 h-20 rounded-lg overflow-hidden">
+            <img
+              src={kalastraLogo}
+              alt="Kalastra Logo"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div dir="ltr" className="border-s-4 border-white ps-3">
+            <h1 className="text-3xl font-bold text-white">Kalastra</h1>
+            <p className="text-white/80">Join the artisan community</p>
+          </div>
         </div>
 
         <Card>
@@ -175,7 +186,7 @@ export default function Auth() {
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
 
-              {/* ================= LOGIN ================= */}
+              {/* LOGIN  */}
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
 
@@ -217,7 +228,7 @@ export default function Auth() {
                 </form>
               </TabsContent>
 
-              {/* ================= SIGNUP ================= */}
+              {/* SIGNUP */}
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
 
@@ -278,7 +289,7 @@ export default function Auth() {
               </TabsContent>
             </Tabs>
 
-            {/* ================= GOOGLE ================= */}
+            {/* GOOGLE */}
             <Separator className="my-4" />
 
             <Button

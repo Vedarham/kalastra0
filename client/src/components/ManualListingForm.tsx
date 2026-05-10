@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createManualProduct } from "@/api/product";
+import { createManualProduct, enrichProductDetails } from "@/api/product";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import {
   Package,
   Hash,
   CircleX,
-  IndianRupee
+  IndianRupee,
+  Loader2
 } from "lucide-react";
 
 interface ManualListingFormProps {
@@ -40,6 +41,43 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
   });
 
   const [newTag, setNewTag] = useState("");
+  const [isEnriching, setIsEnriching] = useState(false);
+
+  const handleEnrich = async () => {
+    try {
+      setIsEnriching(true);
+      const textToEnrich = `${formData.name} ${formData.description}`.trim();
+      if (!textToEnrich) {
+        toast({ 
+          title: "Provide details", 
+          description: "Please enter a basic title or description first so AI can work its magic.", 
+          variant: "default" 
+        });
+        return;
+      }
+      const data = await enrichProductDetails(textToEnrich);
+      if (data.success && data.aiResult) {
+        const ai = data.aiResult;
+        setFormData(prev => ({
+          ...prev,
+          name: ai.Title || prev.name,
+          description: ai.Description || prev.description,
+          price: ai.Price ? String(ai.Price) : prev.price,
+          category: ai.Category || prev.category,
+          tags: ai.SEO_Tags && ai.SEO_Tags.length > 0 ? ai.SEO_Tags : prev.tags
+        }));
+        toast({ title: "Magic applied ✨", description: "Your listing has been enriched with AI" });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.response?.data?.message || "Failed to enrich listing",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnriching(false);
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -121,8 +159,9 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
       size="sm"
       className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-primary/10"
       onClick={onClick}
+      disabled={isEnriching}
     >
-      <Sparkles className="h-4 w-4 text-primary" />
+      {isEnriching ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />}
     </Button>
   );
 
@@ -158,7 +197,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="pr-12"
                 />
-                <AIAssistButton onClick={() => console.log("AI assist for title")} />
+                <AIAssistButton onClick={handleEnrich} />
               </div>
             </div>
 
@@ -173,7 +212,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="min-h-[120px] pr-12"
                 />
-                <AIAssistButton onClick={() => console.log("AI assist for description")} />
+                <AIAssistButton onClick={handleEnrich} />
               </div>
             </div>
 
@@ -190,7 +229,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                     onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                     className="pl-10 pr-12"
                   />
-                  <AIAssistButton onClick={() => console.log("AI assist for price")} />
+                  <AIAssistButton onClick={handleEnrich} />
                 </div>
               </div>
 
@@ -224,7 +263,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                   <option value="Art">Art</option>
                   <option value="Other">Other</option>
                 </select>
-                <AIAssistButton onClick={() => console.log("AI assist for category")} />
+                <AIAssistButton onClick={handleEnrich} />
               </div>
             </div>
           </CardContent>
@@ -302,7 +341,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                     className="pr-12"
                   />
-                  <AIAssistButton onClick={() => console.log("AI assist for tags")} />
+                  <AIAssistButton onClick={handleEnrich} />
                 </div>
                 <Button onClick={handleAddTag} disabled={!newTag.trim()}>
                   <Plus className="h-4 w-4" />

@@ -10,11 +10,13 @@ import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { followArtisan, getArtisan, unfollowArtisan } from "@/api/artisan";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreatorProfile() {
   const { artisanId } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -76,13 +78,17 @@ export default function CreatorProfile() {
         await unfollowArtisan(artisanId!);
         setArtisan((prev: any) => ({
           ...prev,
-          followers: prev.followers - 1,
+          followers: Array.isArray(prev.followers) 
+            ? prev.followers.filter((id: any) => id !== user?._id) 
+            : Math.max(0, prev.followers - 1),
         }));
       } else {
         await followArtisan(artisanId!);
         setArtisan((prev: any) => ({
           ...prev,
-          followers: prev.followers + 1,
+          followers: Array.isArray(prev.followers) 
+            ? [...prev.followers, user?._id] 
+            : prev.followers + 1,
         }));
       }
 
@@ -141,7 +147,9 @@ export default function CreatorProfile() {
               <div className="flex items-center gap-6 mb-6">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-semibold">{artisan.followers}</span>
+                  <span className="font-semibold">
+                    {Array.isArray(artisan.followers) ? artisan.followers.length : (artisan.followers || 0)}
+                  </span>
                   <span className="text-muted-foreground">followers</span>
                 </div>
                 <div className="flex items-center gap-2">

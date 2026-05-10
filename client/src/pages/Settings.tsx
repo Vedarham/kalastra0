@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,9 +20,17 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
+import { useAuth } from "@/contexts/AuthContext";
+import { updateProfile, changePassword, exportUserData } from "@/api/auth";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user, setUser } = useAuth();
+  const { setTheme } = useTheme();
+  
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "" });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [settings, setSettings] = useState({
     notifications: {
       email: true,
@@ -43,26 +50,88 @@ export default function Settings() {
     }
   });
 
-  const handleSettingChange = (category: string, key: string, value: boolean | string) => {
-    setSettings(prev => ({
-      ...prev,
+  useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        preferences: {
+          language: (user as any).preferences?.language || "en",
+          currency: (user as any).preferences?.currency || "usd",
+          theme: (user as any).preferences?.theme || "system",
+        },
+        privacy: {
+          profileVisible: (user as any).privacy?.profileVisible ?? true,
+          showEmail: (user as any).privacy?.showEmail ?? false,
+          allowMessages: (user as any).privacy?.allowMessages ?? true,
+        }
+      }));
+    }
+  }, [user]);
+
+  const handleSettingChange = async (category: string, key: string, value: boolean | string) => {
+    const updatedSettings = {
+      ...settings,
       [category]: {
-        ...prev[category],
+        ...settings[category as keyof typeof settings],
         [key]: value
       }
-    }));
-    
-    toast({
-      title: "Settings updated",
-      description: "Your preferences have been saved"
-    });
+    };
+    setSettings(updatedSettings);
+
+    if (category === "preferences" && key === "theme") {
+      setTheme(value as "light" | "dark" | "system");
+    }
+
+    try {
+      const res = await updateProfile({
+        preferences: updatedSettings.preferences,
+        privacy: updatedSettings.privacy
+      });
+      setUser(res.data.user);
+      toast({
+        title: "Settings updated",
+        description: "Your preferences have been saved"
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating settings",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleExportData = () => {
-    toast({
-      title: "Data export started",
-      description: "We'll email you a link to download your data within 24 hours"
-    });
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsChangingPassword(true);
+      await changePassword(passwordForm);
+      toast({ title: "Password changed successfully. Please login again." });
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+    } catch (err: any) {
+      toast({ title: err.response?.data?.message || "Failed to change password", variant: "destructive" });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      toast({ title: "Data export started", description: "Downloading your data..." });
+      const data = await exportUserData();
+      const url = window.URL.createObjectURL(new Blob([data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `kalastra_data_${user?.name || "export"}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      toast({ title: "Failed to export data", variant: "destructive" });
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -87,9 +156,8 @@ export default function Settings() {
           </div>
 
           <Tabs defaultValue="notifications" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
-              <TabsTrigger value="privacy">Privacy</TabsTrigger>
               <TabsTrigger value="preferences">Preferences</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="data">Data</TabsTrigger>
@@ -107,142 +175,17 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Email Notifications</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Receive order updates and important account information
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.email}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('notifications', 'email', checked)
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>SMS Notifications</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Get text messages for urgent order updates
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.sms}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('notifications', 'sms', checked)
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Push Notifications</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Browser notifications for real-time updates
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.push}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('notifications', 'push', checked)
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Marketing Communications</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Promotional offers and new product announcements
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.marketing}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('notifications', 'marketing', checked)
-                        }
-                      />
-                    </div>
+                  <div className="p-4 bg-muted/50 rounded-lg border text-center">
+                    <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <h3 className="font-medium">Notification Preferences Coming Soon</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      We are currently building our notification system. You'll be able to customize your email and SMS alerts here soon!
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="privacy">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Privacy Settings
-                  </CardTitle>
-                  <CardDescription>
-                    Control who can see your information and contact you
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Public Profile</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Allow others to view your profile and purchase history
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.profileVisible}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('privacy', 'profileVisible', checked)
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Show Email Address</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Display your email on your public profile
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.showEmail}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('privacy', 'showEmail', checked)
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Allow Messages</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Let other users send you direct messages
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.allowMessages}
-                        onCheckedChange={(checked) => 
-                          handleSettingChange('privacy', 'allowMessages', checked)
-                        }
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="preferences">
               <Card>
@@ -339,24 +282,30 @@ export default function Settings() {
                     <div className="space-y-4">
                       <div>
                         <Label className="text-base font-medium">Password</Label>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Last changed 3 months ago
-                        </p>
-                        <Button variant="outline">Change Password</Button>
+                        <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4 max-w-sm">
+                          <div className="space-y-2">
+                            <Label>Current Password</Label>
+                            <Input 
+                              type="password" 
+                              value={passwordForm.currentPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>New Password</Label>
+                            <Input 
+                              type="password" 
+                              value={passwordForm.newPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                            />
+                          </div>
+                          <Button type="submit" disabled={isChangingPassword}>
+                            {isChangingPassword ? "Updating..." : "Update Password"}
+                          </Button>
+                        </form>
                       </div>
 
-                      <Separator />
 
-                      <div>
-                        <Label className="text-base font-medium">Two-Factor Authentication</Label>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Add an extra layer of security to your account
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Status: Not enabled</span>
-                          <Button variant="outline">Enable 2FA</Button>
-                        </div>
-                      </div>
 
                       <Separator />
 

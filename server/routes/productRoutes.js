@@ -1,5 +1,5 @@
 import express from "express";
-import { createManualProduct, createAIProduct, getProducts, getMyProducts, getProductById, deleteProduct, updateProduct } from "../controllers/productController.js";
+import { createManualProduct, createAIProduct, getProducts, getMyProducts, getProductById, deleteProduct, updateProduct, enrichProductData } from "../controllers/productController.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js"
@@ -17,6 +17,9 @@ router.get("/:id", getProductById);
 
 // Manual Product Creation
 router.post("/manual", authMiddleware, authorizeRoles("seller"), upload.array("images", 5), createManualProduct);
+
+// Enrich Product Data
+router.post("/enrich", authMiddleware, authorizeRoles("seller"), enrichProductData);
 
 // AI Product Creation (Audio + Images)
 router.post(

@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Camera, MapPin, Mail, Edit, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
-import { logout } from "@/api/auth";
+import { logout, changePassword } from "@/api/auth";
 
 export default function Profile() {
   const { toast } = useToast();
@@ -31,6 +31,26 @@ export default function Profile() {
   });
 
   const [editFormData, setEditFormData] = useState(formData);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "" });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsChangingPassword(true);
+      await changePassword(passwordForm);
+      toast({ title: "Password changed successfully. Please login again." });
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+    } catch (err: any) {
+      toast({ title: err.response?.data?.message || "Failed to change password", variant: "destructive" });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -90,12 +110,6 @@ export default function Profile() {
     }
   };
 
-  const stats = [
-    { label: "Orders", value: 24 },
-    { label: "Favorites", value: 156 },
-    { label: "Reviews", value: 18 },
-    { label: "Following", value: 45 }
-  ];
 
   const handleLogout = async () => {
   try {
@@ -183,15 +197,7 @@ export default function Profile() {
                   
                   <p className="text-muted-foreground">{formData.bio}</p>
                   
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {stats.map((stat) => (
-                      <div key={stat.label} className="text-center p-3 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                        <div className="text-sm text-muted-foreground">{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
+
                 </div>
               </div>
             </CardContent>
@@ -400,10 +406,28 @@ export default function Profile() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
-                    <Button variant="outline">Change Password</Button>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Last changed 3 months ago
-                    </p>
+                    <h4 className="font-medium mb-3">Change Password</h4>
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-sm">
+                      <div className="space-y-2">
+                        <Label>Current Password</Label>
+                        <Input 
+                          type="password" 
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>New Password</Label>
+                        <Input 
+                          type="password" 
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        />
+                      </div>
+                      <Button type="submit" disabled={isChangingPassword}>
+                        {isChangingPassword ? "Updating..." : "Update Password"}
+                      </Button>
+                    </form>
                   </div>
                   
                   <Separator />

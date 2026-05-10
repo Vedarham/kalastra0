@@ -1,5 +1,7 @@
-import express from 'express' 
+import express from 'express'
 import dotenv from "dotenv";
+dotenv.config();
+
 import cors from 'cors'
 import cookieParser from "cookie-parser";
 import passport from 'passport';
@@ -8,17 +10,18 @@ import rateLimit from 'express-rate-limit';
 import { connectDB } from './db/db.js'
 import './config/passport.js'
 
-import authRoutes from './routes/authRoutes.js' 
+import authRoutes from './routes/authRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import artisanRoutes from './routes/artisanRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import orderRoutes from './routes/orderRoutes.js'
-import paymentRouter from './routes/paymentRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js'
 import reviewRoutes from './routes/reviewRoutes.js'
+import cartRoutes from './routes/cartRoutes.js'
+import supportRoutes from './routes/supportRoutes.js'
 import { stripeWebhook } from './controllers/paymentController.js';
 
 const app = express()
-dotenv.config();
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
@@ -58,8 +61,10 @@ app.use('/api/artisans', artisanRoutes)
 app.use('/api/products', productRoutes)
 // app.use('/api/notifications', notificationRoutes)
 app.use('/api/orders', orderRoutes);
-app.use("/api/payments", paymentRouter);
+app.use("/api/payments", paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/support', supportRoutes);
 
 const startServer = async () => {
   await connectDB();

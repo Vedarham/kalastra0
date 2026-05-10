@@ -6,10 +6,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Eye, MessageCircle, Star, Filter } from "lucide-react";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
 import { getMyOrders } from "@/api/order";
+import { createReview } from "@/api/review";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 export default function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const [reviewOrder, setReviewOrder] = useState<any | null>(null);
+  const [reviewItem, setReviewItem] = useState<any | null>(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", comment: "" });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -46,37 +58,60 @@ export default function Orders() {
     }
   };
 
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewOrder || !reviewItem) return;
+    try {
+      setIsSubmittingReview(true);
+      await createReview({
+        product: reviewItem.product?._id || reviewItem.product,
+        rating: reviewForm.rating,
+        title: reviewForm.title,
+        comment: reviewForm.comment,
+        orderId: reviewOrder._id,
+      });
+      toast({ title: "Review submitted successfully!" });
+      setReviewOrder(null);
+      setReviewItem(null);
+      setReviewForm({ rating: 5, title: "", comment: "" });
+    } catch (err: any) {
+      toast({ title: err.response?.data?.message || "Failed to submit review", variant: "destructive" });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   const activeOrders = orders.filter(order => ["processing", "shipped"].includes(order.status));
   const pastOrders = orders.filter(order => ["delivered", "cancelled"].includes(order.status));
 
-  const OrderCard = ({ order }: { order: typeof orders[0] }) => (
+  const OrderCard = ({ order }: { order: any }) => (
     <Card className="mb-4">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-lg">Order #{order.id}</CardTitle>
-            <p className="text-muted-foreground text-sm">Placed on {new Date(order.date).toLocaleDateString()}</p>
+            <CardTitle className="text-lg">Order #{order.orderNumber || order._id}</CardTitle>
+            <p className="text-muted-foreground text-sm">Placed on {new Date(order.createdAt).toLocaleDateString()}</p>
           </div>
           <div className="text-right">
             <Badge className={getStatusColor(order.status)}>
               {getStatusText(order.status)}
             </Badge>
-            <p className="text-lg font-semibold mt-1">${order.total}</p>
+            <p className="text-lg font-semibold mt-1">${order.pricing?.total || 0}</p>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {order.items.map((item, index) => (
+          {order.items.map((item: any, index: number) => (
             <div key={index} className="flex gap-4 p-3 bg-muted rounded-lg">
               <img 
-                src={item.image} 
+                src={item.image || "/placeholder.png"} 
                 alt={item.name}
                 className="w-16 h-16 object-cover rounded-md"
               />
               <div className="flex-1">
                 <h4 className="font-medium">{item.name}</h4>
-                <p className="text-sm text-muted-foreground">by {item.seller}</p>
+                <p className="text-sm text-muted-foreground">by {item.seller?.shopName || item.seller?.name || "Unknown"}</p>
                 <p className="text-sm">Qty: {item.quantity} × ${item.price}</p>
               </div>
             </div>
@@ -92,7 +127,7 @@ export default function Orders() {
               Contact Seller
             </Button>
             {order.status === "delivered" && (
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => { setReviewOrder(order); setReviewItem(item); }}>
                 <Star className="h-4 w-4 mr-2" />
                 Write Review
               </Button>
@@ -139,7 +174,7 @@ export default function Orders() {
                 </Card>
               ) : (
                 activeOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} />
+                  <OrderCard key={order._id} order={order} />
                 ))
               )}
             </TabsContent>
@@ -155,13 +190,65 @@ export default function Orders() {
                 </Card>
               ) : (
                 pastOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} />
+                  <OrderCard key={order._id} order={order} />
                 ))
               )}
             </TabsContent>
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={!!reviewItem} onOpenChange={() => { setReviewItem(null); setReviewOrder(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Write a Review</DialogTitle>
+          </DialogHeader>
+          {reviewItem && (
+            <form onSubmit={handleReviewSubmit} className="space-y-4">
+              <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+                <img 
+                  src={reviewItem.image || "/placeholder.png"} 
+                  alt={reviewItem.name}
+                  className="w-12 h-12 object-cover rounded-md"
+                />
+                <h4 className="font-medium text-sm">{reviewItem.name}</h4>
+              </div>
+              <div className="space-y-2">
+                <Label>Rating (1-5)</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-6 w-6 cursor-pointer ${star <= reviewForm.rating ? "fill-marketplace-featured text-marketplace-featured" : "text-muted-foreground"}`}
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input 
+                  placeholder="Review title" 
+                  value={reviewForm.title} 
+                  onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Comment</Label>
+                <Textarea 
+                  placeholder="Share your experience..." 
+                  value={reviewForm.comment} 
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} 
+                  rows={4} 
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isSubmittingReview}>
+                {isSubmittingReview ? "Submitting..." : "Submit Review"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

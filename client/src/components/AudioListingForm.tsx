@@ -141,11 +141,11 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
     try {
       const data = await generateAIListing(formData);
 
-      if (!data || !data.Title) {
+      if (!data || !data.aiRaw) {
         throw new Error("Invalid AI response");
       }
 
-      setGeneratedData(data);
+      setGeneratedData(data.aiRaw);
     } catch (error) {
       console.error("Error processing with AI:", error);
     } finally {

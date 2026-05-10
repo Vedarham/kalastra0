@@ -18,95 +18,49 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
+import { submitSupportTicket } from "@/api/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
-const supportTickets = [
-  {
-    id: "TK-001",
-    subject: "Order delivery issue",
-    status: "In Progress",
-    priority: "High",
-    created: "2024-01-15",
-    lastUpdate: "2024-01-16"
-  },
-  {
-    id: "TK-002", 
-    subject: "Payment refund request",
-    status: "Resolved",
-    priority: "Medium",
-    created: "2024-01-10",
-    lastUpdate: "2024-01-12"
-  }
-];
 
 const supportMethods = [
-  {
-    icon: MessageCircle,
-    title: "Live Chat",
-    description: "Chat with our support team in real-time",
-    availability: "24/7",
-    responseTime: "Usually within 5 minutes",
-    available: true
-  },
   {
     icon: Mail,
     title: "Email Support", 
     description: "Send us a detailed message about your issue",
     availability: "24/7",
     responseTime: "Within 24 hours",
-    available: true
-  },
-  {
-    icon: Phone,
-    title: "Phone Support",
-    description: "Speak directly with a support representative",
-    availability: "Mon-Fri, 9AM-6PM EST",
-    responseTime: "Immediate",
-    available: false
+    available: true,
+    action: () => window.location.href = "mailto:support@kalastra.com"
   }
 ];
 
 export default function Support() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     subject: "",
-    category: "",
-    priority: "",
-    description: "",
-    email: "john.doe@example.com"
+    message: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Support ticket created",
-      description: "We've received your request and will respond within 24 hours"
-    });
-    setFormData({
-      subject: "",
-      category: "",
-      priority: "",
-      description: "",
-      email: "john.doe@example.com"
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Resolved": return "bg-green-100 text-green-800";
-      case "In Progress": return "bg-blue-100 text-blue-800";
-      case "Open": return "bg-yellow-100 text-yellow-800";
-      default: return "bg-gray-100 text-gray-800";
+    if (!formData.subject || !formData.message) {
+      toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await submitSupportTicket({ ...formData, email: user?.email });
+      toast({ title: "Ticket submitted successfully!" });
+      setFormData({ subject: "", message: "" });
+    } catch (error) {
+      toast({ title: "Failed to submit ticket", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High": return "bg-red-100 text-red-800";
-      case "Medium": return "bg-orange-100 text-orange-800";
-      case "Low": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,6 +94,7 @@ export default function Support() {
                     return (
                       <div 
                         key={method.title}
+                        onClick={method.action}
                         className={`p-4 border rounded-lg ${method.available ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50'}`}
                       >
                         <div className="flex items-start gap-3">
@@ -200,142 +155,40 @@ export default function Support() {
 
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Create Ticket */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Create Support Ticket</CardTitle>
+                  <CardTitle>Reach Out to Us</CardTitle>
                   <CardDescription>
-                    Describe your issue and we'll help you resolve it
+                    We currently use email to track all support queries.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          disabled
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="order">Order Issues</SelectItem>
-                            <SelectItem value="payment">Payment & Billing</SelectItem>
-                            <SelectItem value="account">Account Settings</SelectItem>
-                            <SelectItem value="technical">Technical Issues</SelectItem>
-                            <SelectItem value="seller">Seller Support</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="subject">Subject</Label>
-                        <Input
-                          id="subject"
-                          placeholder="Brief description of your issue"
-                          value={formData.subject}
-                          onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="priority">Priority</Label>
-                        <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="urgent">Urgent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
+                  <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Please provide detailed information about your issue..."
-                        rows={6}
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      <Label htmlFor="subject">Subject</Label>
+                      <Input 
+                        id="subject"
+                        placeholder="What is this regarding?" 
+                        value={formData.subject}
+                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                        required
                       />
                     </div>
-
-                    <div className="flex items-center gap-4">
-                      <Button type="submit" className="flex items-center gap-2">
-                        <Send className="h-4 w-4" />
-                        Submit Ticket
-                      </Button>
-                      <Button type="button" variant="outline" className="flex items-center gap-2">
-                        <Paperclip className="h-4 w-4" />
-                        Attach Files
-                      </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="message">Message</Label>
+                      <Textarea 
+                        id="message"
+                        placeholder="Please describe your issue in detail..." 
+                        rows={6}
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        required
+                      />
                     </div>
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                      {isSubmitting ? "Sending..." : "Submit Ticket"}
+                    </Button>
                   </form>
-                </CardContent>
-              </Card>
-
-              {/* Existing Tickets */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Support Tickets</CardTitle>
-                  <CardDescription>
-                    Track the status of your recent support requests
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {supportTickets.length === 0 ? (
-                    <div className="text-center py-8">
-                      <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No support tickets</h3>
-                      <p className="text-muted-foreground">
-                        You haven't created any support tickets yet
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {supportTickets.map((ticket) => (
-                        <div key={ticket.id} className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium">{ticket.subject}</h4>
-                                <Badge className={getStatusColor(ticket.status)}>
-                                  {ticket.status}
-                                </Badge>
-                                <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
-                                  {ticket.priority}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">#{ticket.id}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Created: {ticket.created}</span>
-                                <span>Last update: {ticket.lastUpdate}</span>
-                              </div>
-                            </div>
-                            <Button variant="ghost" size="sm">
-                              View Details
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
