@@ -16,12 +16,15 @@ import {
   CheckCircle,
   Clock,
   CircleX,
+  Check,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 import { generateAIListing } from "@/api/product";
 
 interface AudioListingFormProps {
   onBack: () => void;
+  onEditManual?: (data: any) => void;
 }
 
 const questions = [
@@ -35,15 +38,16 @@ const questions = [
   "What makes your product unique compared to similar items?",
 ];
 
-export default function AudioListingForm({ onBack }: AudioListingFormProps) {
-   interface GeneratedData {
-    Title: string;
-    Description: string;
-    Price: string;
-    Quantity?: number;
-    Category: string;
-    SEO_Tags: string[];
-    Reach_Chance: string;
+export default function AudioListingForm({ onBack, onEditManual }: AudioListingFormProps) {
+  const { toast } = useToast();
+  interface GeneratedData {
+    title: string;
+    description: string;
+    price: string;
+    quantity?: number;
+    category: string;
+    seoTags: string[];
+    reachChance: string | number;
   }
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -57,15 +61,15 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-  return () => {
-    Object.values(recordings).forEach((blob) => {
-      URL.revokeObjectURL(URL.createObjectURL(blob));
-    });
-    images.forEach((img) => {
-      URL.revokeObjectURL(URL.createObjectURL(img));
-    });
-  };
-}, []);
+    return () => {
+      Object.values(recordings).forEach((blob) => {
+        URL.revokeObjectURL(URL.createObjectURL(blob));
+      });
+      images.forEach((img) => {
+        URL.revokeObjectURL(URL.createObjectURL(img));
+      });
+    };
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -146,8 +150,17 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
       }
 
       setGeneratedData(data.aiRaw);
+      toast({
+        title: "Product Created! 🎉",
+        description: "AI has successfully generated and published your listing.",
+      });
     } catch (error) {
       console.error("Error processing with AI:", error);
+      toast({
+        title: "Generation Failed",
+        description: "Something went wrong while processing your audio.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -392,36 +405,36 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">Title</h3>
-                <p className="text-lg">{generatedData.Title}</p>
+                <p className="text-lg">{generatedData.title || (generatedData as any).Title}</p>
               </div>
 
               <div>
                 <h3 className="font-semibold mb-2">Description</h3>
-                <p>{generatedData.Description}</p>
+                <p>{generatedData.description || (generatedData as any).Description}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-semibold mb-2">Price</h3>
                   <p className="text-lg font-bold text-green-600">
-                    {generatedData.Price}
+                    {generatedData.price || (generatedData as any).Price}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2">Quantity</h3>
-                  <p>{generatedData.Quantity || 100} available</p>
+                  <p>{generatedData.quantity || (generatedData as any).Quantity || 100} available</p>
                 </div>
               </div>
 
               <div>
                 <h3 className="font-semibold mb-2">Category</h3>
-                <Badge variant="outline">{generatedData.Category}</Badge>
+                <Badge variant="outline">{generatedData.category || (generatedData as any).Category}</Badge>
               </div>
 
               <div>
                 <h3 className="font-semibold mb-2">SEO Tags</h3>
                 <div className="flex flex-wrap gap-2">
-                  {generatedData.SEO_Tags.map((tag: string, index: number) => (
+                  {(generatedData.seoTags || []).map((tag: string, index: number) => (
                     <Badge key={index} variant="secondary">
                       #{tag}
                     </Badge>
@@ -435,18 +448,25 @@ export default function AudioListingForm({ onBack }: AudioListingFormProps) {
                   variant="secondary"
                   className="bg-green-100 text-green-800"
                 >
-                  {generatedData.Reach_Chance}
+                  {generatedData.reachChance}
                 </Badge>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            <Button variant="outline" className="flex-1">
-              Edit Manually
+          <div className="flex flex-wrap gap-4">
+            <Button variant="outline" className="flex-1" onClick={onBack}>
+              Finish & View
             </Button>
-            <Button className="flex-1" size="lg">
-              Publish Listing
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => onEditManual?.(generatedData)}
+            >
+              Edit Details
+            </Button>
+            <Button className="flex-1" size="lg" onClick={onBack}>
+              Create Another
             </Button>
           </div>
         </div>

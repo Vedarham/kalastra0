@@ -56,7 +56,7 @@ app.use(passport.initialize());
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // limit each IP to 500 requests per windowMs
   message: 'Too many requests from this IP, please try again later'
 });
 
@@ -87,8 +87,8 @@ app.use('/api/support', supportRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err);
-  
+  console.error(err.stack);
+
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({
       success: false,
@@ -102,34 +102,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Database connection logic
-let isConnected = false;
-const connectToDatabase = async () => {
-  if (isConnected) return;
+const startServer = async () => {
   try {
     await connectDB();
-    isConnected = true;
-    console.log('Database connected successfully');
+
+    // On Vercel, we do NOT call app.listen()
+    if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
+      const PORT = process.env.PORT || 5000;
+      app.listen(PORT, () => {
+        console.log(`Server running on PORT: ${PORT}`);
+      });
+    }
   } catch (error) {
-    console.error('Database connection failed:', error);
+    console.error('Failed to start server:', error);
   }
 };
 
-// Start DB connection in the background
-connectToDatabase();
+startServer();
 
-// Middleware to ensure DB connection for API routes
-app.use('/api', async (req, res, next) => {
-  await connectToDatabase();
-  next();
-});
-
-// For local development
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on PORT: ${PORT}`);
-  });
-}
-
-export default app;
+export default app

@@ -88,7 +88,7 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4" />
-                <span>hello@kalastra.com</span>
+                <span>namaskaram.arham@gmail.com</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4" />
@@ -96,7 +96,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
-                <span>Mumbai, India</span>
+                <span>Indore, Madhya Pradesh, India</span>
               </div>
             </div>
             

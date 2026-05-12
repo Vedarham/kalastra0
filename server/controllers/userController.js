@@ -179,14 +179,20 @@ export const uploadAvatar = async (req, res) => {
     res.status(500).json({
         success:false,
         message: "Unabel to update Avatar", 
-        error: error.message 
     });
-};
+  }
 };
 
 export const toggleWishlist = async (req, res) => {
   try {
     const { productId } = req.params;
+    
+    // Prevent seller from wishlisting their own product
+    const product = await Product.findById(productId);
+    if (product && product.artisan.toString() === req.user.id) {
+      return res.status(400).json({ success: false, message: "You cannot wishlist your own product" });
+    }
+
     const user = await User.findById(req.user.id);
     
     if (!user) {

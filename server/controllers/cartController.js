@@ -1,8 +1,16 @@
 import Cart from "../models/Cart.models.js";
+import Product from "../models/Product.model.js";
 
 export const addToCart = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
+    
+    // Prevent seller from buying their own product
+    const product = await Product.findById(productId);
+    if (product && product.artisan.toString() === req.user.id) {
+      return res.status(400).json({ success: false, message: "You cannot add your own product to cart" });
+    }
+
     let cart = await Cart.findOne({ user: req.user.id });
 
     if (!cart) {

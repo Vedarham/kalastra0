@@ -8,11 +8,23 @@ import AudioListingForm from "./AudioListingForm";
 
 export default function SellOptionsDialog() {
   const [currentView, setCurrentView] = useState<'options' | 'manual' | 'audio'>('options');
+  const [initialManualData, setInitialManualData] = useState<any>(null);
+
+  const handleEditManual = (data: any) => {
+    setInitialManualData(data);
+    setCurrentView('manual');
+  };
 
   if (currentView === 'manual') {
     return (
       <DialogContent className="sm:max-w-4xl">
-        <ManualListingForm onBack={() => setCurrentView('options')} />
+        <ManualListingForm 
+          onBack={() => {
+            setCurrentView('options');
+            setInitialManualData(null);
+          }} 
+          initialData={initialManualData}
+        />
       </DialogContent>
     );
   }
@@ -20,7 +32,10 @@ export default function SellOptionsDialog() {
   if (currentView === 'audio') {
     return (
       <DialogContent className="sm:max-w-3xl">
-        <AudioListingForm onBack={() => setCurrentView('options')} />
+        <AudioListingForm 
+          onBack={() => setCurrentView('options')} 
+          onEditManual={handleEditManual}
+        />
       </DialogContent>
     );
   }

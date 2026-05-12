@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createManualProduct, enrichProductDetails } from "@/api/product";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  Sparkles, 
-  Upload, 
-  X, 
+import {
+  ArrowLeft,
+  Sparkles,
+  Upload,
+  X,
   Plus,
   ImageIcon,
   Package,
@@ -24,54 +24,87 @@ import {
 
 interface ManualListingFormProps {
   onBack: () => void;
+  initialData?: any;
 }
 
-export default function ManualListingForm({ onBack }: ManualListingFormProps) {
+export default function ManualListingForm({ onBack, initialData }: ManualListingFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
     quantity: "",
     category: "",
-    tags: [] as string[],
+    seoTags: [] as string[],
+    reachChance: "",
     images: [] as File[]
   });
 
   const [newTag, setNewTag] = useState("");
   const [isEnriching, setIsEnriching] = useState(false);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        name: initialData.title || initialData.name || prev.name,
+        description: initialData.description || prev.description,
+        price: initialData.price ? String(initialData.price) : prev.price,
+        category: initialData.category || prev.category,
+        seoTags: Array.isArray(initialData.seoTags) ? initialData.seoTags : (Array.isArray(initialData.SEO_Tags) ? initialData.SEO_Tags : prev.seoTags),
+        reachChance: initialData.reachChance ? String(initialData.reachChance) : (initialData.Reach_Chance ? String(initialData.Reach_Chance) : prev.reachChance)
+      }));
+      if (Array.isArray(initialData.seoTags)) setAiSuggestedTags(initialData.seoTags);
+      else if (Array.isArray(initialData.SEO_Tags)) setAiSuggestedTags(initialData.SEO_Tags);
+    }
+  }, [initialData]);
 
   const handleEnrich = async () => {
     try {
       setIsEnriching(true);
       const textToEnrich = `${formData.name} ${formData.description}`.trim();
       if (!textToEnrich) {
-        toast({ 
-          title: "Provide details", 
-          description: "Please enter a basic title or description first so AI can work its magic.", 
-          variant: "default" 
+        toast({
+          title: "Provide details",
+          description: "Please enter a basic title or description first so AI can work its magic.",
+          variant: "default"
         });
         return;
       }
       const data = await enrichProductDetails(textToEnrich);
+
       if (data.success && data.aiResult) {
         const ai = data.aiResult;
+
+        const title = ai.title || ai.Title || ai.name || ai.Name;
+        const description = ai.description || ai.Description;
+        const price = ai.Price || ai.price;
+        const category = ai.Category || ai.category;
+        const seoTags = ai.seoTags || ai.SEO_Tags || ai.seo_tags || ai.tags;
+        const reachChance = ai.reachChance || ai.Reach_Chance || ai.reach_chance;
+
         setFormData(prev => ({
           ...prev,
-          name: ai.Title || prev.name,
-          description: ai.Description || prev.description,
-          price: ai.Price ? String(ai.Price) : prev.price,
-          category: ai.Category || prev.category,
-          tags: ai.SEO_Tags && ai.SEO_Tags.length > 0 ? ai.SEO_Tags : prev.tags
+          name: title || prev.name,
+          description: description || prev.description,
+          price: price ? String(price) : prev.price,
+          category: category || prev.category,
+          seoTags: Array.isArray(seoTags) && seoTags.length > 0 ? Array.from(new Set([...prev.seoTags, ...seoTags])) : prev.seoTags,
+          reachChance: reachChance ? String(reachChance) : prev.reachChance
         }));
+        if (Array.isArray(seoTags)) setAiSuggestedTags(seoTags);
+
         toast({ title: "Magic applied ✨", description: "Your listing has been enriched with AI" });
+      } else {
+        throw new Error(data.message || "Failed to enrich listing");
       }
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err?.response?.data?.message || "Failed to enrich listing",
+        title: "Enrichment failed",
+        description: err?.response?.data?.message || err.message || "Could not connect to AI service",
         variant: "destructive",
       });
     } finally {
@@ -97,8 +130,12 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
       data.append("description", formData.description);
       data.append("price", formData.price);
       data.append("category", formData.category);
-      data.append("quantity", formData.quantity);
-      data.append("tags", JSON.stringify(formData.tags));
+      data.append("quantity", formData.quantity || "1");
+      data.append("seoTags", JSON.stringify(formData.seoTags));
+
+      if (formData.reachChance) {
+        data.append("reachChance", formData.reachChance);
+      }
 
       formData.images.forEach((file) => {
         data.append("images", file);
@@ -121,20 +158,14 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
   };
 
   const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }));
+    if (newTag.trim() && !formData.seoTags.includes(newTag.trim())) {
+      setFormData(prev => ({ ...prev, seoTags: [...prev.seoTags, newTag.trim()] }));
       setNewTag("");
     }
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
+    setFormData(prev => ({ ...prev, seoTags: prev.seoTags.filter(t => t !== tagToRemove) }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,7 +216,7 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            
+
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Product Title *</Label>
@@ -260,7 +291,15 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                   <option value="Pottery">Pottery</option>
                   <option value="Textiles">Textiles</option>
                   <option value="Woodwork">Woodwork</option>
+                  <option value="Metalwork">Metalwork</option>
+                  <option value="Glass">Glass</option>
+                  <option value="Leather">Leather</option>
+                  <option value="Paper Crafts">Paper Crafts</option>
+                  <option value="Home Decor">Home Decor</option>
                   <option value="Art">Art</option>
+                  <option value="Clothing">Clothing</option>
+                  <option value="Accessories">Accessories</option>
+                  <option value="Toys">Toys</option>
                   <option value="Other">Other</option>
                 </select>
                 <AIAssistButton onClick={handleEnrich} />
@@ -332,6 +371,49 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-primary">Pro Tip:</span> Adding descriptive tags helps your product appear in more search results. AI-generated tags are optimized for maximum visibility.
+                </p>
+                {formData.reachChance && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 transition-all duration-500" 
+                        style={{ width: `${formData.reachChance}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-green-600 whitespace-nowrap">
+                      {formData.reachChance}% Reach Potential
+                    </span>
+                  </div>
+                )}
+                {aiSuggestedTags.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium text-primary/70 uppercase tracking-wider">AI Suggestions:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {aiSuggestedTags.map((tag, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (!formData.seoTags.includes(tag)) {
+                              setFormData(prev => ({ ...prev, seoTags: [...prev.seoTags, tag] }));
+                            }
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                            formData.seoTags.includes(tag) 
+                              ? "bg-primary/20 border-primary/30 text-primary cursor-default" 
+                              : "bg-background border-border hover:border-primary/50 text-muted-foreground"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -348,9 +430,9 @@ export default function ManualListingForm({ onBack }: ManualListingFormProps) {
                 </Button>
               </div>
 
-              {formData.tags.length > 0 && (
+              {formData.seoTags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {formData.tags.map((tag, index) => (
+                  {formData.seoTags.map((tag, index) => (
                     <Badge key={index} variant="secondary" className="flex items-center gap-1">
                       {tag}
                       <Button

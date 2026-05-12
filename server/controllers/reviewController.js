@@ -52,7 +52,14 @@ export const getProductReviews = async (req, res) => {
 
 export const createReview = async (req, res) => {
   try {
-    const { product, rating, title, comment, images, orderId } = req.body;
+    const { product: productId, rating, title, comment, images, orderId } = req.body;
+    const product = productId;
+
+    // Prevent seller from reviewing their own product
+    const productData = await Product.findById(product);
+    if (productData && productData.artisan.toString() === req.user.id) {
+      return res.status(400).json({ success: false, message: "You cannot review your own product" });
+    }
 
     if (!product || !rating || !comment) {
       return res.status(400).json({

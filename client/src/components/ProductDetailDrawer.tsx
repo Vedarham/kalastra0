@@ -242,9 +242,13 @@ export default function ProductDetailDrawer({
                 </span>
               </div>
             </div>
-            <Button onClick={handleAddToCart} className="gap-2">
+            <Button 
+              onClick={handleAddToCart} 
+              className="gap-2"
+              disabled={user?._id === (product.artisan?._id || product.artisan)}
+            >
               <ShoppingCart className="h-4 w-4" />
-              Add to Cart
+              {user?._id === (product.artisan?._id || product.artisan) ? "Your Product" : "Add to Cart"}
             </Button>
           </div>
 
@@ -257,6 +261,15 @@ export default function ProductDetailDrawer({
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {product.description}
               </p>
+              {product.seoTags && product.seoTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {product.seoTags.map((tag, idx) => (
+                    <Badge key={idx} variant="outline" className="text-[10px] py-0 px-2 h-5">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -272,12 +285,30 @@ export default function ProductDetailDrawer({
           </SheetHeader>
 
           {/* Write a Review */}
-          {user && !userReview && (
+          {user && user?._id === (product.artisan?._id || product.artisan) && (
+            <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+              <p className="text-sm text-center text-primary font-medium">
+                Sellers cannot review their own products.
+              </p>
+            </div>
+          )}
+          {user && user?._id !== (product.artisan?._id || product.artisan) && !userReview && (
             <form
               onSubmit={handleSubmitReview}
               className="bg-muted/40 rounded-xl p-4 space-y-3 border border-border"
             >
-              <p className="font-medium text-sm">Write a review</p>
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-sm">Write a review</p>
+                {product.seoTags && product.seoTags.length > 0 && (
+                  <div className="flex gap-1 overflow-x-auto no-scrollbar max-w-[60%]">
+                    {product.seoTags.slice(0, 2).map((tag, idx) => (
+                      <span key={idx} className="text-[9px] text-muted-foreground whitespace-nowrap">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               <StarRating value={newRating} onChange={setNewRating} />
               <input
                 className="w-full text-sm bg-background border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"

@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Camera, MapPin, Mail, Edit, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarketplaceHeader from "@/components/MarketplaceHeader";
-import { logout, changePassword } from "@/api/auth";
+import { logout, changePassword, updateProfile } from "@/api/auth";
 
 export default function Profile() {
   const { toast } = useToast();
@@ -72,14 +72,14 @@ export default function Profile() {
 }, [user]);
 
   const handleSave = async () => {
-  try {
-    await api.put("/auth/me", editFormData);
-    await loadUser();
-    setIsEditing(false);
-    toast({ title: "Profile updated", description: "Saved successfully" });
-  } catch {
-    toast({ title: "Update failed", description: "Try again", variant: "destructive" });
-  }
+    try {
+      await updateProfile(editFormData);
+      await loadUser();
+      setIsEditing(false);
+      toast({ title: "Profile updated", description: "Saved successfully" });
+    } catch {
+      toast({ title: "Update failed", description: "Try again", variant: "destructive" });
+    }
   };
 
   const handleCancel = () => {

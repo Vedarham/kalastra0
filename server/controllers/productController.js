@@ -1,6 +1,6 @@
 import Product from "../models/Product.model.js";
 import cloudinary from "../config/cloudinary.js";
-import { enrichProduct } from "../services/geminiService.js";
+import { enrichProduct } from '../services/aiService.js';
 import { transcribeAudio } from "../utils/transcribe.js";
 import uploadToCloudinary from "../utils/uploadToCloudinary.js"
 
@@ -78,26 +78,26 @@ export const getProductById = async (req, res) => {
 
 export const createManualProduct = async (req, res) => {
   try {
-    const { name, description, price, category, quantity } = req.body;
-    let tags = [];
+    const { name, description, price, category, quantity, reachChance } = req.body;
+    let seoTags = [];
     try {
-      if (req.body.tags) tags = JSON.parse(req.body.tags);
+      if (req.body.seoTags) seoTags = JSON.parse(req.body.seoTags);
     } catch (e) {
       return res.status(400).json({
         success: false,
-        message: "Invalid format. Must be a JSON array of strings."
+        message: "Invalid format. seoTags must be a JSON array of strings."
       });
     }
 
     if (!name || !description || !price || !category) {
       return res.status(400).json({
         success: false,
-        message: "All fields required"
+        message: "Name, description, price, and category are required."
       });
     }
 
     let images = [];
-    if (req.files?.length) {
+    if (req.files && req.files.length > 0) {
       images = await Promise.all(
         req.files.map(async (file) => {
           const result = await uploadToCloudinary(file.buffer);
@@ -109,17 +109,19 @@ export const createManualProduct = async (req, res) => {
       );
     }
 
+    const parsedQuantity = quantity ? Number(quantity) : 1;
+
     const product = await Product.create({
       name,
       description,
-      price,
+      price: Number(price),
       category,
       artisan: req.user.id,
-      tags,
-      seoTip: req.body.seoTip || "Optimize tags for more reach",
       images,
-      quantity: quantity ? Number(quantity) : 1,
-      stock: quantity ? Number(quantity) : 1
+      quantity: parsedQuantity,
+      stock: parsedQuantity,
+      seoTags,
+      reachChance: reachChance ? Number(reachChance) : undefined,
     });
 
     res.status(201).json({
@@ -182,14 +184,20 @@ export const createAIProduct = async (req, res) => {
       })
     );
 
+    const ai = aiResponse;
+    const category = ai.Category || ai.category;
+    const seoTags = ai.seoTags || ai.SEO_Tags || ai.seo_tags || ai.tags;
+    const reachChance = ai.reachChance || ai.Reach_Chance || ai.reach_chance;
+
     const product = await Product.create({
-      name: aiResponse.Title || aiResponse.title,
-      description: aiResponse.Description || aiResponse.description,
-      price: aiResponse.Price || aiResponse.price || 0,
-      category: aiResponse.Category || aiResponse.category || "Other",
+      name: ai.title || ai.Title || ai.Name || ai.name,
+      description: ai.description || ai.Description,
+      price: ai.price || ai.Price || 0,
+      category: category || "Other",
       artisan: req.user.id,
       images,
-      tags: aiResponse.SEO_Tags || aiResponse.tags || [],
+      seoTags: seoTags || [],
+      reachChance: parseFloat(reachChance || "0"),
     });
 
     return res.status(201).json({
@@ -210,13 +218,17 @@ export const createAIProduct = async (req, res) => {
 export const enrichProductData = async (req, res) => {
   try {
     const { text } = req.body;
-    if (!text) {
-      return res.status(400).json({ success: false, message: "Text is required for enrichment" });
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Text is required for AI enrichment" 
+      });
     }
     const aiResult = await enrichProduct(text);
     res.status(200).json({ success: true, aiResult });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("AI Enrichment Error:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to enrich product information" });
   }
 };
 
