@@ -66,3 +66,9 @@ export const getMyProducts = async () => {
   const res = await api.get("/products/my");
   return res.data;
 };
+
+// Translate text using Google Translate backend API
+export const translateText = async (text: string, targetLang: string = "en") => {
+  const { data } = await api.post("/products/translate", { text, targetLang });
+  return data;
+};

@@ -11,7 +11,7 @@ The primary goal of the ongoing improvements has been to bridge the gap between 
 - Replacing mock data with dynamic database interactions.
 - Securing API routes and implementing robust authentication/authorization.
 - Refining complex user flows like the Seller Dashboard (CRUD operations) and secure Profile Management.
-- Integrating real-time and third-party APIs (Google Gemini, Cloudinary, Speech-to-Text).
+- Integrating real-time and third-party APIs (Groq, Cloudinary, Speech-to-Text).
 - Learning and applying best practices in MERN stack architecture, state management, and RESTful API design.
 
 ## Tech Stack
@@ -37,7 +37,8 @@ The project is a monorepo divided into a `client` (Frontend) and a `server` (Bac
 | **Framework** | Express.js                                       |
 | **Database**  | MongoDB (with Mongoose ODM)                      |
 | **Auth**      | JSON Web Tokens (JWT) & bcrypt                   |
-| **Services**  | Cloudinary (Storage), Google Gemini (AI), DeepGram (Speech-to-Text) |
+| **Services**  | Cloudinary (Storage), Groq (AI), DeepGram (Speech-to-Text), Google Translate (Free Regional Translation) |
+| **Payments**  | Stripe (Full), Razorpay (Partial)               |
 
 ---
 
@@ -49,7 +50,7 @@ Kalastra/
 │   ├── controllers/  # Request handlers (MVC Controller)
 │   ├── models/       # Mongoose schemas for MongoDB
 │   ├── routes/       # API endpoint definitions
-│   ├── services/     # Business logic for external APIs (Gemini)
+│   ├── services/     # Business logic for external APIs (Groq)
 │   ├── middlewares/  # Custom middleware (e.g., auth, role validation, upload)
 │   ├── config/       # Configuration files (e.g., Cloudinary, DB)
 │   └── server.js     # Main server entry point
@@ -67,16 +68,22 @@ Kalastra/
 
 ## Key Features
 
-- **Artisan Marketplace:** Browse, filter, and purchase unique handcrafted items with dynamic, backend-driven category sorting.
+- **Artisan Marketplace:** Browse, filter, and purchase unique handcrafted items with dynamic, backend-driven category sorting, inline query auto-clear, and typewriter-animated search.
 - **Seller Dashboard:** Comprehensive product management allowing artisans to Add, Edit, and Delete their listings while viewing performance metrics.
-- **AI-Powered Chatbot:** "KalaBot" helps users find products based on natural language queries, color preferences, and price ranges.
-- **Voice-to-Text Listing:** Sellers can list products simply by speaking their descriptions, utilizing speech-to-text and AI enrichment.
+- **Guest Demo Mode:** Fully interactive demo dashboard for site scrollers. Populates stats widgets, revenue area charts, category bars, product inventories, and recent orders with robust mock datasets. All mutative actions are intercepted with artisan account role guard toasts.
+- **Visual Progress Feedback:** Integrated layout-matched, pulsing Tailwind skeleton lists (for products and orders) and save actions' feedback loaders to make transitions feel fluid and professional.
+- **Inventory Management:** Sellers can manage stock quantities and toggle product availability (Active/Discontinued) directly from their dashboard.
+- **AI-Powered Enrichment & Translation:** Utilizing **Groq (Llama-3.1)** and a free Google Translation API wrapper.
+  - **Voice-to-Text Listing:** Speak in regional Indian languages (Hindi, Tamil, Telugu, Kannada, Bengali, Marathi, Gujarati) to list products. The application transcribes, translates to English, and enriches the product listing with AI.
+  - **Regional Language Helper (Translator):** Side widget card allowing artisans to enter text in local scripts, translate it to English, and map it directly to fields (like Title or Description) with a single click.
 - **Review System:** Authenticated users can leave reviews and star ratings on products they have purchased.
 - **Secure Profiles:** Users can manage their personal details, preferences, and securely update their passwords.
 - **Artisan Verification:** Identity verification for sellers using email-based OTP to ensure platform authenticity and trust.
-- **Secure Payments:** Integrated with Stripe for secure and seamless checkout experiences.
+- **Secure Payments:** Fully integrated with **Stripe** for secure checkouts. Razorpay support is currently in partial development.
+- **Artisan-Themed 404 Page:** Warm clay-gradient background, custom illustrations, and dynamic guest routing options to redirect users seamlessly.
 
 ## Future Roadmap
+- Completing full Razorpay integration with webhook support.
 - Enhancing the notification system (Email/SMS).
 - Adding real-time chat between buyers and sellers.
-- Implementing Razorpay payment gateway integration.
+- Implementing advanced seller analytics and global shipping options.

@@ -28,7 +28,7 @@ export default function TopCreators() {
   }, []);
   const navigate = useNavigate();
   return (
-    <section className="py-12 bg-background">
+    <section className="py-8 bg-background">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
           <div>

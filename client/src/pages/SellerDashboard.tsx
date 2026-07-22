@@ -17,6 +17,7 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -112,6 +113,87 @@ const STATUS_STYLES: Record<string, string> = {
   refunded: "bg-gray-100 text-gray-600 border-gray-300",
 };
 
+const MOCK_STATS: SellerStats = {
+  totalRevenue: 124500,
+  totalOrders: 48,
+  totalProducts: 3,
+  revenueChart: [
+    { month: "Jan", revenue: 15000, orders: 6 },
+    { month: "Feb", revenue: 18000, orders: 7 },
+    { month: "Mar", revenue: 22000, orders: 8 },
+    { month: "Apr", revenue: 20000, orders: 8 },
+    { month: "May", revenue: 24000, orders: 9 },
+    { month: "Jun", revenue: 25500, orders: 10 },
+  ]
+};
+
+const MOCK_PRODUCTS: Product[] = [
+  {
+    _id: "mock_1",
+    name: "Handcrafted Terracotta Clay Pot",
+    description: "Traditional Indian terracotta clay pot, hand-turned by master potters and baked in brick kilns. Perfect for water storage or organic home decor.",
+    price: 450,
+    category: "Pottery",
+    stock: 12,
+    images: [{ url: "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&q=80&w=400" }],
+    isActive: true,
+    rating: 4.8,
+    artisan: { name: "Ram Potters" } as any,
+    seoTags: ["clay", "terracotta", "pottery", "organic"]
+  },
+  {
+    _id: "mock_2",
+    name: "Pure Silk Banarasi Handloom Saree",
+    description: "Exquisite handwoven Banarasi saree made from the finest pure silk yarns, featuring intricate gold and silver zari brocade work. Handcrafted in Varanasi.",
+    price: 8500,
+    category: "Textiles",
+    stock: 3,
+    images: [{ url: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=400" }],
+    isActive: true,
+    rating: 4.9,
+    artisan: { name: "Varanasi Weavers" } as any,
+    seoTags: ["silk", "saree", "handloom", "banarasi"]
+  },
+  {
+    _id: "mock_3",
+    name: "Carved Walnut Wood Table",
+    description: "Premium Kashmir walnut wood end table, hand-carved with traditional chinar leaf patterns. Sturdy, elegant, and timeless.",
+    price: 12000,
+    category: "Woodwork",
+    stock: 5,
+    images: [{ url: "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&q=80&w=400" }],
+    isActive: true,
+    rating: 4.7,
+    artisan: { name: "Kashmir Crafts" } as any,
+    seoTags: ["walnut", "woodwork", "table", "handcarved"]
+  }
+];
+
+const MOCK_ORDERS: RecentOrder[] = [
+  {
+    _id: "order_1",
+    orderNumber: "ORD-99218",
+    buyer: { name: "Aarav Sharma", email: "aarav@gmail.com" },
+    items: [
+      { _id: "item_1", name: "Handcrafted Terracotta Clay Pot", image: "", price: 450, quantity: 2, status: "processing" }
+    ],
+    pricing: { total: 900 },
+    status: "processing",
+    createdAt: new Date().toISOString()
+  },
+  {
+    _id: "order_2",
+    orderNumber: "ORD-99120",
+    buyer: { name: "Ananya Iyer", email: "ananya@yahoo.com" },
+    items: [
+      { _id: "item_2", name: "Pure Silk Banarasi Handloom Saree", image: "", price: 8500, quantity: 1, status: "confirmed" }
+    ],
+    pricing: { total: 8500 },
+    status: "confirmed",
+    createdAt: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
 const SellerDashboard = () => {
   const { user, isAuthLoading } = useAuth();
   const navigate = useNavigate();
@@ -127,16 +209,32 @@ const SellerDashboard = () => {
   const [editForm, setEditForm] = useState({ name: "", description: "", price: 0, category: "", stock: 1 });
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   useEffect(() => {
     if (isAuthLoading) return;
     if (!user || user.role !== "seller") {
-      navigate("/");
+      setIsGuestMode(true);
+    } else {
+      setIsGuestMode(false);
     }
-  }, [user, isAuthLoading, navigate]);
+  }, [user, isAuthLoading]);
+
+  // Load mock data if in guest mode
+  useEffect(() => {
+    if (!isGuestMode) return;
+    setStats(MOCK_STATS);
+    setRecentOrders(MOCK_ORDERS);
+    setProducts(MOCK_PRODUCTS);
+    setSelectedProduct("mock_1");
+    setLoadingStats(false);
+    setLoadingOrders(false);
+    setLoadingProducts(false);
+  }, [isGuestMode]);
 
   useEffect(() => {
-    if (!user || user.role !== "seller") return;
+    if (isGuestMode || !user || user.role !== "seller") return;
 
     const fetchStats = async () => {
       try {
@@ -150,10 +248,10 @@ const SellerDashboard = () => {
     };
 
     fetchStats();
-  }, [user]);
+  }, [user, isGuestMode]);
 
   useEffect(() => {
-    if (!user || user.role !== "seller") return;
+    if (isGuestMode || !user || user.role !== "seller") return;
 
     const fetchOrders = async () => {
       try {
@@ -167,10 +265,10 @@ const SellerDashboard = () => {
     };
 
     fetchOrders();
-  }, [user]);
+  }, [user, isGuestMode]);
 
   useEffect(() => {
-    if (!user || user.role !== "seller") return;
+    if (isGuestMode || !user || user.role !== "seller") return;
 
     const fetchProducts = async () => {
       try {
@@ -188,9 +286,17 @@ const SellerDashboard = () => {
     };
 
     fetchProducts();
-  }, [user]);
+  }, [user, isGuestMode]);
 
   const handleDeleteProduct = async (id: string) => {
+    if (isGuestMode) {
+      toast({
+        title: "Guest Mode 🔒",
+        description: "Artisan account required to delete products. Please sign in or switch your role.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
       setIsDeleting(id);
@@ -206,8 +312,17 @@ const SellerDashboard = () => {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGuestMode) {
+      toast({
+        title: "Guest Mode 🔒",
+        description: "Artisan account required to update products. Please sign in or switch your role.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!editingProduct) return;
     try {
+      setIsSaving(true);
       const formData = new FormData();
       formData.append("name", editForm.name);
       formData.append("description", editForm.description);
@@ -219,12 +334,22 @@ const SellerDashboard = () => {
       setProducts(prev => prev.map(p => p._id === editingProduct._id ? { ...p, ...editForm } : p));
       toast({ title: "Product updated successfully" });
       setEditingProduct(null);
-    } catch (err) {
+    } catch (err: any) {
       toast({ title: err.response?.data?.message || "Failed to update product", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleToggleActive = async (product: Product) => {
+    if (isGuestMode) {
+      toast({
+        title: "Guest Mode 🔒",
+        description: "Artisan account required to modify product status. Please sign in or switch your role.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       const formData = new FormData();
       formData.append("isActive", String(!product.isActive));
@@ -245,7 +370,7 @@ const SellerDashboard = () => {
     );
   }
 
-  if (!user || user.role !== "seller") return null;
+  if (!isGuestMode && (!user || user.role !== "seller")) return null;
 
   const revenueData: RevenuePoint[] = stats?.revenueChart ?? [];
 
@@ -278,26 +403,51 @@ const SellerDashboard = () => {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Seller Dashboard</h1>
               <p className="text-muted-foreground mt-1">
-                Welcome back, {user.name}! Here's your business overview.
+                Welcome back, {isGuestMode ? "Guest Voyager" : user?.name}! Here's your business overview.
               </p>
             </div>
             <Badge
               variant="outline"
               className={
-                user.isSellerVerified
+                isGuestMode
+                  ? "bg-blue-100 text-blue-700 border-blue-300"
+                  : user?.isSellerVerified
                   ? "bg-green-100 text-green-700 border-green-300"
                   : "bg-yellow-100 text-yellow-700 border-yellow-300"
               }
             >
               <Star className="w-3 h-3 mr-1" />
-              {user.isSellerVerified ? "Verified Artisan" : "Pending Verification"}
+              {isGuestMode ? "Demo Mode" : user?.isSellerVerified ? "Verified Artisan" : "Pending Verification"}
             </Badge>
           </div>
         </div>
       </div>
 
-      {/* Verification banner */}
-      {!user.isSellerVerified && (
+      {/* Guest Mode Banner or Verification Banner */}
+      {isGuestMode ? (
+        <div className="container mx-auto px-4 mt-6">
+          <Card className="border-primary/30 bg-primary/5 shadow-soft">
+            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-primary mb-1 flex items-center gap-2">
+                  <span>👋</span> Guest Demo Mode
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  You are viewing a live demo of the Kalastra Seller Dashboard. Sign in or register as an artisan to list your own products, track sales, and access real analytics.
+                </p>
+              </div>
+              <div className="flex gap-3 w-full md:w-auto flex-shrink-0">
+                <Button variant="outline" onClick={() => navigate("/auth")}>
+                  Sign In
+                </Button>
+                <Button onClick={() => navigate("/auth?tab=signup")}>
+                  Become an Artisan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : !user?.isSellerVerified ? (
         <div className="container mx-auto px-4 mt-6">
           <Card className="border-yellow-400 bg-yellow-50">
             <CardContent className="p-6">
@@ -313,7 +463,7 @@ const SellerDashboard = () => {
             </CardContent>
           </Card>
         </div>
-      )}
+      ) : null}
 
       <div className="container mx-auto px-4 py-8">
         {/* ── Key Metrics ── */}
@@ -374,11 +524,38 @@ const SellerDashboard = () => {
                   <CardTitle>My Products</CardTitle>
                   <CardDescription>Manage your inventory and update details.</CardDescription>
                 </div>
-                <Button onClick={() => setIsSellOptionsOpen(true)}>Add New Product</Button>
+                <Button onClick={() => {
+                  if (isGuestMode) {
+                    toast({
+                      title: "Guest Mode 🔒",
+                      description: "Artisan account required to create product listings. Please sign in or switch your role.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  setIsSellOptionsOpen(true);
+                }}>Add New Product</Button>
               </CardHeader>
               <CardContent>
                 {loadingProducts ? (
-                  <p className="text-muted-foreground text-sm">Loading products...</p>
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 border rounded-lg animate-pulse bg-slate-50/50">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-slate-200 rounded" />
+                          <div className="space-y-2">
+                            <div className="h-4 w-36 bg-slate-200 rounded" />
+                            <div className="h-3.5 w-24 bg-slate-100 rounded" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="h-8 w-20 bg-slate-200 rounded-md" />
+                          <div className="h-8 w-16 bg-slate-200 rounded-md" />
+                          <div className="h-8 w-16 bg-slate-200 rounded-md" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : products.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No products listed yet.</p>
                 ) : (
@@ -655,7 +832,23 @@ const SellerDashboard = () => {
               </CardHeader>
               <CardContent>
                 {loadingOrders ? (
-                  <p className="text-muted-foreground text-sm">Loading orders...</p>
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 border rounded-lg animate-pulse bg-slate-50/50">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-slate-200 rounded-full animate-pulse" />
+                          <div className="space-y-2">
+                            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
+                            <div className="h-3.5 w-28 bg-slate-100 rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <div className="h-4 w-16 bg-slate-200 rounded ml-auto animate-pulse" />
+                          <div className="h-5 w-20 bg-slate-100 rounded ml-auto animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : recentOrders.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No orders yet.</p>
                 ) : (
@@ -802,8 +995,17 @@ const SellerDashboard = () => {
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setEditingProduct(null)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="button" variant="outline" disabled={isSaving} onClick={() => setEditingProduct(null)}>Cancel</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -832,17 +1034,25 @@ const MetricCard = ({
   <Card className="hover:shadow-lg transition-shadow">
     <CardContent className="p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex-1">
           <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="text-2xl font-bold text-foreground">
-            {loading ? "—" : value}
-          </p>
-          <p className="text-sm text-green-600 flex items-center mt-1">
-            <ArrowUpRight className="w-3 h-3 mr-1" />
-            {trend}
-          </p>
+          {loading ? (
+            <div className="h-8 w-24 bg-slate-200 animate-pulse rounded-md mt-1.5" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground mt-1">
+              {value}
+            </p>
+          )}
+          {loading ? (
+            <div className="h-4 w-32 bg-slate-100 animate-pulse rounded-md mt-2" />
+          ) : (
+            <p className="text-sm text-green-600 flex items-center mt-1.5">
+              <ArrowUpRight className="w-3 h-3 mr-1" />
+              {trend}
+            </p>
+          )}
         </div>
-        <div className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center`}>
+        <div className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
           {icon}
         </div>
       </div>

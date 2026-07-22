@@ -25,15 +25,15 @@ interface CategoryFilterProps {
 
 export default function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryFilterProps) {
   return (
-    <div className="py-6 border-b border-border">
+    <div className="py-4 border-b border-border bg-slate-50/40">
       <div className="container mx-auto px-4">
         <ScrollArea className="w-full">
-          <div className="flex space-x-3 pb-4">
+          <div className="flex space-x-3 pb-2">
             {categories.map((category) => (
               <Button
                 key={category.id}
                 variant={selectedCategory === category.id ? "marketplace" : "outline"}
-                className="flex items-center space-x-2 whitespace-nowrap"
+                className="flex items-center space-x-2 whitespace-nowrap rounded-full px-5 py-2 transition-all duration-200 hover:scale-105 hover:shadow-sm"
                 onClick={() => onCategoryChange(category.id)}
               >
                 <span>{category.icon}</span>

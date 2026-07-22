@@ -6,21 +6,22 @@ Welcome to the backend repository of the **Kalastra** application! This is a rob
 
 *   **Secure Authentication & Authorization:** Implements robust JWT-based authentication with bcrypt password hashing. Includes Role-Based Access Control (RBAC) to differentiate between standard `users` and `sellers`.
 *   **Full E-Commerce API:** Complete RESTful endpoints for managing Users, Products, Carts, Orders, and Reviews.
-*   **AI Integration (Google Gemini):** Dedicated services to process text and speech, enriching product descriptions automatically and extracting intelligent search parameters.
+*   **AI Integration (Groq):** Powered by **Groq (Llama-3.1)** to automatically enrich product listings with SEO tags, engaging descriptions, and reach probability analysis.
 *   **Speech-to-Text Integration:** Enables sellers to upload audio files which are transcribed and fed into the AI pipeline for seamless product listing creation.
-*   **Cloud Storage Integration:** Utilizes Cloudinary (or Firebase) to securely store, serve, and delete product images and user avatars.
-*   **Dual Payment Gateway Support:** Fully integrated with both **Stripe** and **Razorpay**, including secure webhook endpoints to automatically verify transactions and update order statuses.
-*   **Inventory Management:** Automatically deducts stock upon successful payment and restores stock if an order is cancelled.
+*   **Cloud Storage Integration:** Utilizes Cloudinary to securely store and serve product images and user avatars.
+*   **Payment Gateway Integration:** Fully integrated with **Stripe**, including secure webhook endpoints to automatically verify transactions and update order statuses. **Razorpay** support is currently integrated at the controller level.
+*   **Inventory Management:** Comprehensive stock tracking. Automatically deducts stock upon successful payment and restores stock if an order is cancelled. Sellers can also manually toggle product status (active/discontinued).
+*   **Seller Analytics:** Provides real-time dashboard stats including revenue tracking, order counts, and monthly performance charts.
 
 ## Tech Stack
 
 *   **Runtime:** Node.js
 *   **Framework:** Express.js
-*   **Database:** MongoDB
-*   **ODM:** Mongoose
-*   **Authentication:** jsonwebtoken (JWT), bcryptjs
-*   **File Uploads:** Multer
-*   **Third-Party Services:** Stripe API, Razorpay API, Google Generative AI (Gemini), DeepGram (Speech-to-Text), Cloudinary
+*   **Database:** MongoDB (Mongoose ODM)
+*   **AI:** Groq SDK (Llama-3.1)
+*   **Speech-to-Text:** DeepGram / Google Cloud Speech
+*   **Payments:** Stripe SDK, Razorpay SDK
+*   **Storage:** Cloudinary
 
 ## Getting Started
 
@@ -28,7 +29,7 @@ Welcome to the backend repository of the **Kalastra** application! This is a rob
 
 *   Node.js (v18 or later)
 *   MongoDB Instance (Local or Atlas)
-*   API Keys for Stripe/Razorpay, Google Gemini, and your chosen Cloud Storage.
+*   API Keys for Stripe, Groq, and Cloudinary.
 
 ### Installation
 
@@ -47,7 +48,7 @@ Welcome to the backend repository of the **Kalastra** application! This is a rob
    JWT_SECRET=<your-jwt-secret>
    
    # AI & Storage
-   GEMINI_API_KEY=<your-gemini-api-key>
+   GROQ_API_KEY=<your-groq-api-key>
    CLOUDINARY_CLOUD_NAME=<your-cloud-name>
    CLOUDINARY_API_KEY=<your-api-key>
    CLOUDINARY_API_SECRET=<your-api-secret>
@@ -55,9 +56,6 @@ Welcome to the backend repository of the **Kalastra** application! This is a rob
    # Payments
    STRIPE_SECRET_KEY=<your-stripe-secret>
    STRIPE_WEBHOOK_SECRET=<your-stripe-webhook-secret>
-   RAZORPAY_KEY_ID=<your-razorpay-key>
-   RAZORPAY_KEY_SECRET=<your-razorpay-secret>
-   RAZORPAY_WEBHOOK_SECRET=<your-razorpay-webhook-secret>
    ```
 
 4. Start the development server:
@@ -67,7 +65,7 @@ Welcome to the backend repository of the **Kalastra** application! This is a rob
 
 ## Project Structure
 
-The project strictly follows the MVC (Model-View-Controller) architecture pattern for separation of concerns:
+The project follows the MVC (Model-View-Controller) architecture pattern:
 
 ```
 server/
@@ -76,19 +74,17 @@ server/
 ├── middlewares/      # Express middlewares (Auth validation, Multer file processing)
 ├── models/           # Mongoose schemas (User, Product, Order, Review)
 ├── routes/           # Express router definitions mapping to controllers
-├── services/         # Complex business logic and external API calls (Payments, AI)
+├── services/         # Complex business logic and external API calls (Groq, Payments)
 ├── utils/            # Helper functions (Upload to Cloudinary, formatting)
-├── .env              # Environment variables
-├── package.json      # Dependencies
-└── server.js         # Express app instantiation and server listening
+├── server.js         # Express app instantiation and server listening
 ```
 
 ## API Endpoint Overview
 
-*   **`/api/auth`**: Registration, Login, Logout, and User Session validation.
-*   **`/api/users`**: Profile management and Seller onboarding.
-*   **`/api/products`**: CRUD operations for marketplace listings, including AI-enriched manual creation endpoints.
+*   **`/api/auth`**: Registration, Login, and User Session validation.
+*   **`/api/users`**: Profile management and Seller onboarding with email OTP verification.
+*   **`/api/products`**: CRUD operations for marketplace listings, including Groq-powered enrichment (`/enrich`).
 *   **`/api/cart`**: Manage user shopping sessions.
-*   **`/api/orders`**: Checkout processes, seller order fulfillment, and dashboard analytics.
-*   **`/api/payments`**: Intent creation and Webhook listeners for Stripe and Razorpay.
-*   **`/api/reviews`**: Authenticated creation and fetching of product reviews and ratings.
+*   **`/api/orders`**: Checkout processes, seller order fulfillment, and dashboard stats (`/stats`).
+*   **`/api/payments`**: Intent creation and Webhook listeners for Stripe.
+*   **`/api/reviews`**: Authenticated creation and fetching of product reviews.

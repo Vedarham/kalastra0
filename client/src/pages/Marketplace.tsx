@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { Product } from "@/types/product.types";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAllProducts, getProductsByCategory } from "@/api/product";
 import { getWishlist, toggleWishlist } from "@/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,13 +30,37 @@ export default function Marketplace() {
   const { addToCart } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
 
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
-  // URL ?q= param takes precedence; context searchQuery used for live typing
   const urlQuery = searchParams.get("q") || "";
-  const activeQuery = searchQuery || urlQuery;
+  const activeQuery = searchQuery;
+
+  // Sync URL query to state on mount/change
+  useEffect(() => {
+    if (urlQuery && urlQuery !== searchQuery) {
+      setSearchQuery(urlQuery);
+    }
+  }, [urlQuery]);
+
+  // Sync state back to URL query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (searchQuery) {
+      if (params.get("q") !== searchQuery) {
+        params.set("q", searchQuery);
+        navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+      }
+    } else {
+      if (params.has("q")) {
+        params.delete("q");
+        const newSearch = params.toString();
+        navigate(newSearch ? `${location.pathname}?${newSearch}` : location.pathname, { replace: true });
+      }
+    }
+  }, [searchQuery, navigate, location.pathname, location.search]);
 
   // Debounce reference
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +146,11 @@ export default function Marketplace() {
     setDrawerOpen(true);
   };
 
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setSearchQuery("");
+  };
+
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   return (
@@ -131,14 +160,14 @@ export default function Marketplace() {
 
       <CategoryFilter
         selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        onCategoryChange={handleCategoryChange}
       />
 
       <CreatorCampaigns />
       <TopCreators />
 
-      <main className="container mx-auto px-4 py-12">
-        <div className="mb-8">
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
           <h2 className="text-3xl font-bold text-foreground mb-2">
             {activeQuery
               ? `Search results for "${activeQuery}"`

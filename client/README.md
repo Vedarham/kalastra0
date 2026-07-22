@@ -5,10 +5,10 @@ Welcome to the frontend repository of the **Kalastra** application! This represe
 ## Key Features
 
 *   **Responsive Artisan Marketplace:** Browse, filter, and discover unique handcrafted items. Uses backend-driven filtering for dynamic category sorting.
-*   **Seller Dashboard:** A dedicated space for creators to manage their storefront. Fully integrated with REST APIs to Create, Read, Update, and Delete (CRUD) their product listings.
+*   **Seller Dashboard:** A dedicated space for creators to manage their storefront. Fully integrated with REST APIs to Create, Read, Update, and Delete (CRUD) their product listings, including real-time stock management.
+*   **AI-Optimized Listings:** Leverages **Groq (Llama-3.1)** to automatically generate high-converting SEO tags, descriptions, and market reach analysis during the product creation flow.
 *   **Voice-to-Text Listing:** Simplifies product creation for artisans by allowing them to dictate product descriptions, which are then enhanced via AI.
-*   **AI-Powered Chatbot (KalaBot):** Provides an interactive way for users to search for products using natural language ("show me blue pottery under $50").
-*   **Integrated Shopping Cart & Checkout:** Secure payment integrations offering support for multiple payment gateways (Stripe & Razorpay).
+*   **Integrated Shopping Cart & Checkout:** Secure payment integrations with **Stripe** as the primary provider. Partial support for **Razorpay** is currently in development.
 *   **Verified Customer Reviews:** Authenticated users can leave reviews and star ratings on delivered orders, which display dynamically on product modals.
 *   **Secure User Profiles:** Manage personal information, location details, notification preferences, and securely update passwords.
 

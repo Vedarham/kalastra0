@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Plus, Menu } from "lucide-react";
+import { Search, Plus, Menu, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import SellOptionsDialog from "./SellOptionsDialog";
 import CartDrawer from "./CartDrawer";
@@ -47,8 +47,17 @@ export default function MarketplaceHeader() {
                 placeholder="Search for handmade treasures..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 text-lg border-0 bg-muted focus:bg-background transition-colors"
+                className="pl-10 pr-10 py-3 text-lg border-0 bg-muted focus:bg-background transition-colors"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
           </form>
 
@@ -82,8 +91,17 @@ export default function MarketplaceHeader() {
               placeholder="Search for handmade treasures..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-3 border-0 bg-muted focus:bg-background transition-colors"
+              className="pl-10 pr-10 py-3 border-0 bg-muted focus:bg-background transition-colors"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </form>
       </div>

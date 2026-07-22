@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createManualProduct, enrichProductDetails } from "@/api/product";
+import { createManualProduct, enrichProductDetails, translateText } from "@/api/product";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,6 +112,31 @@ export default function ManualListingForm({ onBack, initialData }: ManualListing
     }
   };
 
+  const [translateInput, setTranslateInput] = useState("");
+  const [translateOutput, setTranslateOutput] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  const handleTranslate = async () => {
+    try {
+      setIsTranslating(true);
+      const res = await translateText(translateInput, "en");
+      if (res.success && res.translatedText) {
+        setTranslateOutput(res.translatedText);
+        toast({ title: "Translated! 👍", description: "You can now apply this to your title or description." });
+      } else {
+        throw new Error(res.message || "Translation failed");
+      }
+    } catch (err: any) {
+      toast({
+        title: "Translation failed",
+        description: err.message || "Failed to translate text.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
@@ -207,6 +232,93 @@ export default function ManualListingForm({ onBack, initialData }: ManualListing
       </div>
 
       <div className="space-y-6">
+        {/* Regional Translator Helper */}
+        <Card className="bg-primary/5 border-primary/20">
+          <CardHeader className="py-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-primary">
+              <Sparkles className="h-4 w-4" />
+              Regional Language Helper (Translator)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            <p className="text-xs text-muted-foreground">
+              Type or paste your product details in your regional language (e.g., Hindi, Tamil, Bengali) and convert them to English.
+            </p>
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="translator-input" className="text-xs">Type in Regional Language</Label>
+                <Textarea
+                  id="translator-input"
+                  placeholder="जैसे: हाथ से बनी मिट्टी की हांडी..."
+                  value={translateInput}
+                  onChange={(e) => setTranslateInput(e.target.value)}
+                  className="min-h-[80px] text-sm bg-background"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="translator-output" className="text-xs">English Translation</Label>
+                <Textarea
+                  id="translator-output"
+                  placeholder="Translation will appear here..."
+                  value={translateOutput}
+                  onChange={(e) => setTranslateOutput(e.target.value)}
+                  className="min-h-[80px] text-sm bg-background"
+                  readOnly={isTranslating}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              <div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleTranslate}
+                  disabled={!translateInput.trim() || isTranslating}
+                  className="gap-1.5"
+                >
+                  {isTranslating ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Translating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Translate to English
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!translateOutput.trim()}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, name: translateOutput.trim() }));
+                    toast({ title: "Applied to Title!" });
+                  }}
+                >
+                  Apply to Title
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!translateOutput.trim()}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, description: translateOutput.trim() }));
+                    toast({ title: "Applied to Description!" });
+                  }}
+                >
+                  Apply to Description
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -464,7 +576,14 @@ export default function ManualListingForm({ onBack, initialData }: ManualListing
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "Publishing..." : "Publish Listing"}
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              "Publish Listing"
+            )}
           </Button>
         </div>
       </div>

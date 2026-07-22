@@ -2,6 +2,7 @@ import Product from "../models/Product.model.js";
 import cloudinary from "../config/cloudinary.js";
 import { enrichProduct } from '../services/aiService.js';
 import { transcribeAudio } from "../utils/transcribe.js";
+import { translateText } from "../services/translationService.js";
 import uploadToCloudinary from "../utils/uploadToCloudinary.js"
 
 export const getProducts = async (req, res) => {
@@ -151,12 +152,19 @@ export const createAIProduct = async (req, res) => {
     }
 
     // STT Transcription
+    const language = req.body.language || "en";
     const transcribedResponses = await Promise.all(
-      audioFiles.map(file => transcribeAudio(file.buffer))
+      audioFiles.map(file => transcribeAudio(file.buffer, language))
     );
 
-    const combinedText = transcribedResponses.join("\n");
-    // console.log("Transcribed:", combinedText);
+    let combinedText = transcribedResponses.join("\n");
+    
+    // Translate regional text to English if needed
+    if (language !== "en" && combinedText.trim().length > 0) {
+      combinedText = await translateText(combinedText, "en");
+    }
+
+    // console.log("Transcribed & Translated:", combinedText);
     const aiResponse = await enrichProduct(combinedText);
     // console.log("Gemini AI Response:", aiResponse);
 
@@ -389,6 +397,30 @@ export const deleteProduct = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+export const translateProductText = async (req, res) => {
+  try {
+    const { text, targetLang = "en" } = req.body;
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Text is required for translation"
+      });
+    }
+
+    const translatedText = await translateText(text, targetLang);
+    return res.status(200).json({
+      success: true,
+      translatedText
+    });
+  } catch (error) {
+    console.error("Translation Endpoint Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to translate text"
     });
   }
 };

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-marketplace.jpg";
 import kalastraLogo from '../assets/Kalastra.jpg';
@@ -223,7 +223,14 @@ export default function Auth() {
                   </div>
 
                   <Button disabled={isLoading} className="w-full">
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -283,7 +290,14 @@ export default function Auth() {
                   />
 
                   <Button disabled={isLoading} className="w-full">
-                    {isLoading ? "Creating..." : "Create Account"}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Account"
+                    )}
                   </Button>
                 </form>
               </TabsContent>

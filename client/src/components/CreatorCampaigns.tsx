@@ -49,7 +49,7 @@ const campaignAds = [
 
 export default function CreatorCampaigns() {
   return (
-    <section className="py-12 bg-muted/30 ">
+    <section className="py-8 bg-muted/30">
       <div className="container mx-auto px-4 hover:cursor-grab active:cursor-grabbing">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
