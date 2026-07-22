@@ -11,9 +11,10 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onViewDetails, onAddToCart }: ProductCardProps) {
-  const discountPercent = product.price 
-    // ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    // : 0;
+  const originalPrice = (product as any).originalPrice;
+  const discountPercent = originalPrice && originalPrice > product.price
+    ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    : 0;
 
   return (
     <Card className="group hover:shadow-card transition-all duration-200 hover:scale-[1.02]">
@@ -56,9 +57,9 @@ export default function ProductCard({ product, onViewDetails, onAddToCart }: Pro
               <span className="font-semibold text-marketplace-price">
                 ₹{product.price}
               </span>
-              {product.price && (
+              {originalPrice && originalPrice > product.price && (
                 <span className="text-xs line-through text-muted-foreground">
-                  ₹{product.price}
+                  ₹{originalPrice}
                 </span>
               )}
             </div>

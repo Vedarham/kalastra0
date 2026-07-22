@@ -245,7 +245,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-fade-in shadow-soft">
-      <Card className="w-[400px] h-[690px] shadow-featured border-primary/20 bg-card">
+      <Card className="w-[400px] h-[690px] shadow-featured border-primary/20 bg-card flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-hero text-primary-foreground">
           <div>
@@ -266,7 +266,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
         </div>
 
         {/* Messages Area */}
-        <ScrollArea className="flex-1 p-4 h-[400px]">
+        <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.map((message) => (
               <div key={message.id}>
@@ -277,10 +277,7 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
                       <ProductCard 
                         key={product._id} 
                         product={product}
-                        onAddToCart={(id) => {
-                          const p = products.find(n => n._id.toString() === id.toString());
-                          if (p) handleAddToCart(p);
-                        }}
+                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>

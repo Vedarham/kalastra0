@@ -145,9 +145,25 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recordingQuestionRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
+      // Cleanup: stop any active recording/stream to free the mic
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          console.error(e);
+        }
+        try {
+          mediaRecorderRef.current.stream
+            .getTracks()
+            .forEach((track) => track.stop());
+        } catch (e) {
+          console.error(e);
+        }
+      }
       Object.values(recordings).forEach((blob) => {
         URL.revokeObjectURL(URL.createObjectURL(blob));
       });
@@ -163,7 +179,18 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
   }, [selectedLanguage]);
 
   const startRecording = async () => {
+    // Immediately set recording status to true for responsive UI state transitions
+    setIsRecording(true);
     try {
+      // Clear any existing recording for this question first
+      setRecordings((prev) => {
+        const copy = { ...prev };
+        delete copy[currentQuestion];
+        return copy;
+      });
+
+      recordingQuestionRef.current = currentQuestion;
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -172,12 +199,18 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: "audio/webm" });
-        setRecordings((prev) => ({ ...prev, [currentQuestion]: blob }));
+        const targetIndex = recordingQuestionRef.current;
+        setRecordings((prev) => ({ ...prev, [targetIndex]: blob }));
       };
       mediaRecorder.start();
-      setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
+      setIsRecording(false);
+      toast({
+        title: "Microphone Access Failed",
+        description: "Please check your microphone permissions and try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -191,20 +224,51 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
     }
   };
 
+  const navigateToQuestion = (index: number) => {
+    if (isRecording) {
+      stopRecording();
+    }
+    setCurrentQuestion(index);
+  };
+
   const playRecording = (questionIndex: number) => {
     const recording = recordings[questionIndex];
     if (recording) {
       if (audioRef.current) {
-        audioRef.current.pause();
+        try {
+          audioRef.current.pause();
+        } catch (e) {
+          console.error(e);
+        }
       }
 
-      audioRef.current = new Audio(URL.createObjectURL(recording));
-      audioRef.current.play();
-      setIsPlaying((prev) => ({ ...prev, [questionIndex]: true }));
+      try {
+        const audioUrl = URL.createObjectURL(recording);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
 
-      audioRef.current.onended = () => {
+        setIsPlaying((prev) => ({ ...prev, [questionIndex]: true }));
+
+        audio.onended = () => {
+          setIsPlaying((prev) => ({ ...prev, [questionIndex]: false }));
+          URL.revokeObjectURL(audioUrl);
+        };
+
+        audio.onerror = (e) => {
+          console.error("Audio playback error:", e);
+          setIsPlaying((prev) => ({ ...prev, [questionIndex]: false }));
+          URL.revokeObjectURL(audioUrl);
+        };
+
+        audio.play().catch((err) => {
+          console.error("Audio play failed:", err);
+          setIsPlaying((prev) => ({ ...prev, [questionIndex]: false }));
+          URL.revokeObjectURL(audioUrl);
+        });
+      } catch (err) {
+        console.error("Failed to initialize audio playback:", err);
         setIsPlaying((prev) => ({ ...prev, [questionIndex]: false }));
-      };
+      }
     }
   };
 
@@ -247,11 +311,12 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
         title: "Product Created! 🎉",
         description: "AI has successfully generated and published your listing.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing with AI:", error);
+      const errMsg = error.response?.data?.message || "Something went wrong while processing your audio.";
       toast({
         title: "Generation Failed",
-        description: "Something went wrong while processing your audio.",
+        description: errMsg,
         variant: "destructive",
       });
     } finally {
@@ -329,23 +394,28 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
               </div>
 
               <div className="flex items-center justify-center gap-4">
-                {!recordings[currentQuestion] ? (
+                {isRecording ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Button
+                      size="lg"
+                      onClick={stopRecording}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      <MicOff className="h-5 w-5 mr-2" />
+                      Stop Recording
+                    </Button>
+                    <div className="flex items-center gap-2 text-red-500">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium">Recording...</span>
+                    </div>
+                  </div>
+                ) : !recordings[currentQuestion] ? (
                   <Button
                     size="lg"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
+                    onClick={startRecording}
                   >
-                    {isRecording ? (
-                      <>
-                        <MicOff className="h-5 w-5 mr-2" />
-                        Stop Recording
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="h-5 w-5 mr-2" />
-                        Start Recording
-                      </>
-                    )}
+                    <Mic className="h-5 w-5 mr-2" />
+                    Start Recording
                   </Button>
                 ) : (
                   <div className="flex items-center gap-4">
@@ -375,7 +445,7 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={isRecording ? stopRecording : startRecording}
+                      onClick={startRecording}
                     >
                       <Mic className="h-4 w-4 mr-2" />
                       Re-record
@@ -383,15 +453,6 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
                   </div>
                 )}
               </div>
-
-              {isRecording && (
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-red-500">
-                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Recording...</span>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -399,19 +460,13 @@ export default function AudioListingForm({ onBack, onEditManual }: AudioListingF
           <div className="flex justify-between">
             <Button
               variant="outline"
-              onClick={() =>
-                setCurrentQuestion(Math.max(0, currentQuestion - 1))
-              }
+              onClick={() => navigateToQuestion(Math.max(0, currentQuestion - 1))}
               disabled={currentQuestion === 0}
             >
               Previous Question
             </Button>
             <Button
-              onClick={() =>
-                setCurrentQuestion(
-                  Math.min(questions.length - 1, currentQuestion + 1)
-                )
-              }
+              onClick={() => navigateToQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
               disabled={currentQuestion === questions.length - 1}
             >
               Next Question

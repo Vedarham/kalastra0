@@ -27,9 +27,10 @@ export default function ProductModal({ product, isOpen, onClose, onAddToCart }: 
 
   if (!product) return null;
 
-  const discountPercent = product.price 
-    // ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    // : 0;
+  const originalPrice = (product as any).originalPrice;
+  const discountPercent = originalPrice && originalPrice > product.price
+    ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -15,12 +15,12 @@ export default function HeroSection() {
   const navigate = useNavigate();
 
   const searchPhrases = [
-    "terracotta pottery...",
-    "handwoven silk sarees...",
-    "carved walnut woodwork...",
+    "Handmade Warli Art...",
+    "Handcrafted Bihar Art Pottery...",
+    "Naga Wood Art...",
     "pure brass oil lamps...",
     "handcrafted silver jewelry...",
-    "traditional phulkari dupatta...",
+    "Gond Tribe Art Paintings...",
   ];
 
   // Placeholder typing animation

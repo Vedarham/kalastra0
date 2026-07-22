@@ -137,34 +137,70 @@ export const createManualProduct = async (req, res) => {
   }
 };
 
+const QUESTIONS_EN = [
+  "What is the name or title of your product?",
+  "Can you describe what your product is and what makes it special?",
+  "What materials or ingredients are used in making this product?",
+  "What is the price you'd like to set for this item?",
+  "How many of these items do you have available?",
+  "What category would this product fit into?",
+  "Are there any special care instructions or usage tips?",
+  "What makes your product unique compared to similar items?",
+];
+
 export const createAIProduct = async (req, res) => {
   try {
     const files = req.files || {};
-    const audioFiles = Object.entries(files)
+    
+    // Process and sort audio files chronologically by their question index
+    const audioEntries = Object.entries(files)
       .filter(([key]) => key.startsWith("audio_question_"))
-      .map(([, val]) => val[0]);
+      .map(([key, val]) => {
+        const index = parseInt(key.replace("audio_question_", ""), 10);
+        return { index, file: val[0] };
+      })
+      .sort((a, b) => a.index - b.index);
 
-    if (!audioFiles.length) {
+    if (!audioEntries.length) {
       return res.status(400).json({
         success: false,
         message: "No audio uploaded"
       });
     }
 
-    // STT Transcription
     const language = req.body.language || "en";
-    const transcribedResponses = await Promise.all(
-      audioFiles.map(file => transcribeAudio(file.buffer, language))
+
+    // Transcribe and translate each answer segment, then pair with the question structure
+    const qaPairs = await Promise.all(
+      audioEntries.map(async ({ index, file }) => {
+        let transcript = await transcribeAudio(file.buffer, language);
+        transcript = transcript.trim();
+        
+        if (language !== "en" && transcript.length > 0) {
+          transcript = await translateText(transcript, "en");
+        }
+        
+        const questionText = QUESTIONS_EN[index] || `Question ${index + 1}`;
+        return `Question: ${questionText}\nAnswer: ${transcript}`;
+      })
     );
 
-    let combinedText = transcribedResponses.join("\n");
-    
-    // Translate regional text to English if needed
-    if (language !== "en" && combinedText.trim().length > 0) {
-      combinedText = await translateText(combinedText, "en");
+    // Validate that we have at least one meaningful spoken answer to prevent empty fallback data
+    const hasAnyContent = qaPairs.some(pair => {
+      const parts = pair.split("\nAnswer:");
+      return parts[1] && parts[1].trim().length > 0;
+    });
+
+    if (!hasAnyContent) {
+      return res.status(400).json({
+        success: false,
+        message: "No speech was detected in any of your recordings. Please ensure your microphone is working and speak clearly."
+      });
     }
 
-    // console.log("Transcribed & Translated:", combinedText);
+    const combinedText = qaPairs.join("\n\n");
+    // console.log("Transcribed & Formatted Q&A:\n", combinedText);
+
     const aiResponse = await enrichProduct(combinedText);
     // console.log("Gemini AI Response:", aiResponse);
 

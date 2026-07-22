@@ -55,11 +55,18 @@ export const updateItemStatus = (
   itemId: string,
   status: "processing" | "confirmed" | "cancelled"
 ) => {
-  return api.put(`/orders/${orderId}/item/${itemId}`, { status });
+  return api.put(`/orders/seller/${orderId}/item/${itemId}`, { status });
 };
 
 // Get Seller Dashboard Stats
-export const getSellerStats = async() => {
-  const res = await api.get("/orders/seller/stats");
-  return res.data;
+export const getSellerStats = () => {
+  return api.get<{
+    success: boolean;
+    data: {
+      totalRevenue: number;
+      totalOrders: number;
+      totalProducts: number;
+      revenueChart: any[];
+    };
+  }>("/orders/seller/stats");
 };
