@@ -135,7 +135,7 @@ export default function Auth() {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
+    window.location.href = `${import.meta.env.VITE_BACKEND_URI}/api/auth/google`;
   };
 
    return (
